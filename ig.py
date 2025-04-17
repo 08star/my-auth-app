@@ -1,51 +1,63 @@
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
+import os
+import jwt
+from datetime import datetime, timedelta
+from flask import Flask, request, jsonify, abort
+from models import db, User, Device
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth.db'
-db = SQLAlchemy(app)
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+    "DATABASE_URL",
+    "mysql+pymysql://db_user:db_pass@50.6.201.184/db_name?charset=utf8mb4"
+)
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "replace-with-a-secure-random-string")
 
-# --------- Models ---------
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    devices = db.relationship('Device', backref='user', lazy=True)
+db.init_app(app)
 
-    def set_password(self, pw):
-        self.password_hash = generate_password_hash(pw)
+def make_token(user_id):
+    payload = {
+        "user_id": user_id,
+        "exp": datetime.utcnow() + timedelta(hours=8)
+    }
+    return jwt.encode(payload, app.config["SECRET_KEY"], algorithm="HS256")
 
-    def check_password(self, pw):
-        return check_password_hash(self.password_hash, pw)
-
-class Device(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    device_id = db.Column(db.String(64), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-
-# --------- API Endpoints ---------
-@app.route('/api/authenticate', methods=['POST'])
+@app.route("/api/authenticate", methods=["POST"])
 def authenticate():
-    """
-    请求 JSON: { "username": "...", "password": "...", "device_id": "..." }
-    返回 200 OK 表示通过，否则 401/403
-    """
-    data = request.get_json()
-    u = data.get('username', '')
-    p = data.get('password', '')
-    d = data.get('device_id', '')
+    data = request.get_json() or {}
+    u = data.get("username")
+    p = data.get("password")
+    d = data.get("device_id")
+    if not (u and p and d):
+        return jsonify({"error": "missing fields"}), 400
 
     user = User.query.filter_by(username=u).first()
     if not user or not user.check_password(p):
-        return jsonify({ 'error': 'Invalid username or password' }), 401
+        return jsonify({"error": "invalid credentials"}), 401
 
-    # 检查设备是否已经绑定到这个用户
-    if not any(dev.device_id == d for dev in user.devices):
-        return jsonify({ 'error': 'Device not authorized' }), 403
+    allowed = Device.query.filter_by(user_id=user.id, device_id=d).first()
+    if not allowed:
+        return jsonify({"error": "device not authorized"}), 403
 
-    return jsonify({ 'message': 'Authenticated' }), 200
+    token = make_token(user.id)
+    return jsonify({"token": token}), 200
 
-if __name__ == '__main__':
-    db.create_all()  # 第一次运行用
-    app.run(host='0.0.0.0', port=8000)
+# （可選）一個用來測試 token 的端點
+@app.route("/api/ping", methods=["GET"])
+def ping():
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        t = auth.split(None,1)[1]
+        try:
+            payload = jwt.decode(t, app.config["SECRET_KEY"], algorithms=["HS256"])
+            return jsonify({"user_id": payload["user_id"], "status": "ok"})
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "token expired"}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"error": "invalid token"}), 401
+    return jsonify({"error": "missing token"}), 401
+
+if __name__ == "__main__":
+    # 本機測試用
+    with app.app_context():
+        db.create_all()
+    app.run(host="0.0.0.0", port=8000)
