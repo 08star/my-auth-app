@@ -1,74 +1,51 @@
-#!/usr/bin/env python3
-# ig.py — 前端脚本（“前台”）
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 
-import argparse
-import sys
-import requests
-from selenium import webdriver
-# … 你原本的其他 import …
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth.db'
+db = SQLAlchemy(app)
 
-def authenticate(api_url, username, password):
-    """向后端 /api/login 发送用户名/密码，返回 True/False"""
-    resp = requests.post(
-        f"{api_url}/api/login",
-        json={"username": username, "password": password},
-        timeout=10
-    )
-    if resp.status_code == 200 and resp.json().get("ok"):
-        print("✅ 后台认证通过")
-        return True
-    else:
-        print("❌ 后台认证失败:", resp.text)
-        return False
+# --------- Models ---------
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    devices = db.relationship('Device', backref='user', lazy=True)
 
-def validate_device(api_url, username, device_id):
-    """向后端 /api/validate_device 校验设备授权"""
-    resp = requests.post(
-        f"{api_url}/api/validate_device",
-        json={"username": username, "device_id": device_id},
-        timeout=10
-    )
-    if resp.status_code == 200 and resp.json().get("ok"):
-        print("✅ 设备授权通过")
-        return True
-    else:
-        print("❌ 设备未授权:", resp.text)
-        return False
+    def set_password(self, pw):
+        self.password_hash = generate_password_hash(pw)
 
-def parse_args():
-    p = argparse.ArgumentParser(description="IG 自动化脚本（前台），先校验用户/设备。")
-    p.add_argument("--api-url",    required=True,
-                   help="管理端 API 根地址，例如 https://q8887.com")
-    p.add_argument("--username",   required=True, help="管理端用户名")
-    p.add_argument("--password",   required=True, help="管理端密码")
-    p.add_argument("--device-id",  required=True, help="本机设备 ID")
-    # … 如果你有更多选项可以继续加 …
-    return p.parse_args()
+    def check_password(self, pw):
+        return check_password_hash(self.password_hash, pw)
 
-def main():
-    args = parse_args()
+class Device(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.String(64), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    # 第一步：登录认证
-    if not authenticate(args.api_url, args.username, args.password):
-        sys.exit(1)
+# --------- API Endpoints ---------
+@app.route('/api/authenticate', methods=['POST'])
+def authenticate():
+    """
+    请求 JSON: { "username": "...", "password": "...", "device_id": "..." }
+    返回 200 OK 表示通过，否则 401/403
+    """
+    data = request.get_json()
+    u = data.get('username', '')
+    p = data.get('password', '')
+    d = data.get('device_id', '')
 
-    # 第二步：设备授权校验
-    if not validate_device(args.api_url, args.username, args.device_id):
-        sys.exit(1)
+    user = User.query.filter_by(username=u).first()
+    if not user or not user.check_password(p):
+        return jsonify({ 'error': 'Invalid username or password' }), 401
 
-    # —— 上面两步通过后，才进入你原本的 IG 自动化逻辑 —— #
-    # 下面举例如何启动 Selenium driver，并打开 Instagram
-    options = webdriver.ChromeOptions()
-    # … 你的 create_driver 逻辑 …
-    driver = webdriver.Chrome(options=options)
+    # 检查设备是否已经绑定到这个用户
+    if not any(dev.device_id == d for dev in user.devices):
+        return jsonify({ 'error': 'Device not authorized' }), 403
 
-    # 举例：登录、打开粉丝列表、follow_users…
-    # from your_module import login_instagram, open_followers_list, follow_users
-    if not login_instagram(driver, args.username, args.password, None):
-        sys.exit(1)
-    if not open_followers_list(driver, "some_target", None):
-        sys.exit(1)
-    follow_users(driver, max_follow=None, log_widget=None, stop_check=lambda: False)
+    return jsonify({ 'message': 'Authenticated' }), 200
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    db.create_all()  # 第一次运行用
+    app.run(host='0.0.0.0', port=8000)
