@@ -1,127 +1,74 @@
 #!/usr/bin/env python3
-# coding: utf-8
+# ig.py — 前端脚本（“前台”）
 
-import os
-import time
-import random
 import argparse
-
+import sys
+import requests
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+# … 你原本的其他 import …
 
-# 可选弹窗：仅在本地调试时生效
-try:
-    import tkinter as tk
-    from tkinter import messagebox
-except ImportError:
-    tk = None
-    messagebox = None
-
-def create_driver(headless: bool, use_proxy: bool, session_id: str):
-    options = webdriver.ChromeOptions()
-    if headless:
-        options.add_argument("--headless=new")
-    # 以下若需代理，可自行在此处加入 proxy 相关配置
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--start-maximized")
-    options.add_experimental_option("excludeSwitches", ["enable-automation","enable-logging"])
-    service = Service(ChromeDriverManager().install(), log_path="NUL")
-    driver = webdriver.Chrome(service=service, options=options)
-    driver.implicitly_wait(10)
-    return driver
-
-def login_instagram(driver, username: str, password: str):
-    print("🚀 前往 Instagram 登录页...")
-    driver.get("https://www.instagram.com/accounts/login/")
-    WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.NAME, "username")))
-    driver.find_element(By.NAME, "username").send_keys(username)
-    driver.find_element(By.NAME, "password").send_keys(password + Keys.RETURN)
-
-    # 自动跳转或手动验证
-    try:
-        WebDriverWait(driver, 10).until(lambda d: "/accounts/login" not in d.current_url)
-    except:
-        print("⚠️ 可能需要手动验证，请在浏览器完成后按回车继续。")
-        if messagebox:
-            messagebox.showinfo("验证", "请在浏览器完成验证后点击「确定」")
-        else:
-            input("完成验证后按回车继续…")
-
-    print("✅ 登录成功！")
-    time.sleep(random.uniform(3, 6))
-
-def open_followers_list(driver, target: str):
-    print(f"🚀 打开目标主页 {target} 的粉丝列表...")
-    driver.get(f"https://www.instagram.com/{target}/")
-    # 等待“followers”链接出现（中文界面可能是“粉丝”或“追随者”）
-    WebDriverWait(driver, 15).until(
-        EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "followers"))
-    ).click()
-    # 等待对话框弹出
-    WebDriverWait(driver, 15).until(
-        EC.presence_of_element_located((By.XPATH, "//div[@role='dialog']"))
+def authenticate(api_url, username, password):
+    """向后端 /api/login 发送用户名/密码，返回 True/False"""
+    resp = requests.post(
+        f"{api_url}/api/login",
+        json={"username": username, "password": password},
+        timeout=10
     )
-    print("✅ 粉丝列表已打开")
-    time.sleep(2)
+    if resp.status_code == 200 and resp.json().get("ok"):
+        print("✅ 后台认证通过")
+        return True
+    else:
+        print("❌ 后台认证失败:", resp.text)
+        return False
 
-def follow_users(driver, max_follow: int = None):
-    print("🚀 开始追踪粉丝…")
-    followed = 0
-    # 记录上次滚动高度，用于检测是否到底部
-    last_height = 0
+def validate_device(api_url, username, device_id):
+    """向后端 /api/validate_device 校验设备授权"""
+    resp = requests.post(
+        f"{api_url}/api/validate_device",
+        json={"username": username, "device_id": device_id},
+        timeout=10
+    )
+    if resp.status_code == 200 and resp.json().get("ok"):
+        print("✅ 设备授权通过")
+        return True
+    else:
+        print("❌ 设备未授权:", resp.text)
+        return False
 
-    # 找到滚动容器
-    dialog = driver.find_element(By.XPATH, "//div[@role='dialog']//div[@role='dialog']")
-    while True:
-        buttons = dialog.find_elements(By.XPATH,
-            ".//button[.//div[text()='追蹤']]"  # 中文版按钮文字
-        )
-        for btn in buttons:
-            if max_follow and followed >= max_follow:
-                print("🎉 已达到最大追踪数，停止。")
-                return
-            try:
-                driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
-                time.sleep(1)
-                btn.click()
-                followed += 1
-                print(f"✅ 已追踪 ({followed})")
-                time.sleep(random.uniform(4, 8))
-            except Exception as e:
-                print(f"❌ 追踪失败: {e}")
-        # 滚动容器到底
-        driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight;", dialog)
-        time.sleep(random.uniform(2, 4))
-        new_height = driver.execute_script("return arguments[0].scrollHeight;", dialog)
-        if new_height == last_height:
-            print("⏹️ 已到底部，结束追踪流程。")
-            break
-        last_height = new_height
-
-    print("✅ 追踪流程结束")
+def parse_args():
+    p = argparse.ArgumentParser(description="IG 自动化脚本（前台），先校验用户/设备。")
+    p.add_argument("--api-url",    required=True,
+                   help="管理端 API 根地址，例如 https://q8887.com")
+    p.add_argument("--username",   required=True, help="管理端用户名")
+    p.add_argument("--password",   required=True, help="管理端密码")
+    p.add_argument("--device-id",  required=True, help="本机设备 ID")
+    # … 如果你有更多选项可以继续加 …
+    return p.parse_args()
 
 def main():
-    parser = argparse.ArgumentParser(description="Instagram Auto-Follow Bot")
-    parser.add_argument("--username",   required=True, help="Instagram 帐号")
-    parser.add_argument("--password",   required=True, help="Instagram 密码")
-    parser.add_argument("--target",     required=True, help="目标主页用户名")
-    parser.add_argument("--max-follow", type=int, default=None, help="最大追踪数量，不填则追到底")
-    parser.add_argument("--headless",   action="store_true", help="启用无头模式")
-    parser.add_argument("--no-proxy",   dest="use_proxy", action="store_false", help="禁用代理")
-    args = parser.parse_args()
+    args = parse_args()
 
-    driver = create_driver(headless=args.headless, use_proxy=args.use_proxy, session_id=args.username)
-    try:
-        login_instagram(driver, args.username, args.password)
-        open_followers_list(driver, args.target)
-        follow_users(driver, args.max_follow)
-    finally:
-        driver.quit()
+    # 第一步：登录认证
+    if not authenticate(args.api_url, args.username, args.password):
+        sys.exit(1)
+
+    # 第二步：设备授权校验
+    if not validate_device(args.api_url, args.username, args.device_id):
+        sys.exit(1)
+
+    # —— 上面两步通过后，才进入你原本的 IG 自动化逻辑 —— #
+    # 下面举例如何启动 Selenium driver，并打开 Instagram
+    options = webdriver.ChromeOptions()
+    # … 你的 create_driver 逻辑 …
+    driver = webdriver.Chrome(options=options)
+
+    # 举例：登录、打开粉丝列表、follow_users…
+    # from your_module import login_instagram, open_followers_list, follow_users
+    if not login_instagram(driver, args.username, args.password, None):
+        sys.exit(1)
+    if not open_followers_list(driver, "some_target", None):
+        sys.exit(1)
+    follow_users(driver, max_follow=None, log_widget=None, stop_check=lambda: False)
 
 if __name__ == "__main__":
     main()
