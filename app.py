@@ -16,8 +16,6 @@ from flask_login import (
 )
 from wtforms import PasswordField
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import redirect, url_for, request
-from flask_login import current_user
 
 # ── 1. 建立 Flask 應用與設定 ───────────────────────────────────────────────
 app = Flask(__name__)
@@ -75,13 +73,9 @@ class MyAdminIndexView(AdminIndexView):
         return super().index()
 
 class SecureModelView(ModelView):
-    """所有後台 View 都要繼承這個，才能強制登入檢查"""
     def is_accessible(self):
-        # 只有已登入的使用者才能存取
         return current_user.is_authenticated
-
     def inaccessible_callback(self, name, **kwargs):
-        # 未登入時，導到 /admin/login
         return redirect(url_for('admin_login', next=request.url))
 
 class MyAdminIndexView(AdminIndexView):
@@ -129,7 +123,7 @@ class UserAdmin(SecureModelView):
         elif is_created:
             raise ValueError(_l("建立用戶需要密碼"))
         return super().on_model_change(form, model, is_created)
-        
+
 class DeviceAdmin(SecureModelView):
     column_list  = ['id', 'user.username', 'device_id', 'verified']
     column_labels = {
