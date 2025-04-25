@@ -61,7 +61,7 @@ class UserAdmin(ModelView):
     form_excluded_columns = ['password_hash', 'devices']
     column_exclude_list   = ['password_hash']
     column_editable_list  = ['is_active']
-    can_create = False    # ← 關掉「Create」功能
+    can_create = True   # ← 關掉「Create」功能
     can_edit   = True
     can_delete = False
 
