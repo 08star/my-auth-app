@@ -1,4 +1,5 @@
-Flask>=3.0
-Flask-SQLAlchemy>=3.0
-PyMySQL
-PyJWT
+flask
+flask_sqlalchemy
+selenium
+gunicorn
+requests
