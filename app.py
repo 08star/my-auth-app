@@ -89,13 +89,21 @@ def register():
 # 登入並取得 JWT
 @app.route('/auth/login', methods=['POST'])
 def login():
-    data=request.get_json() or {}; u=data.get('username'); p=data.get('password')
-    if not u or not p: return jsonify({'error':'username and password required'}),400
-    user=User.query.filter_by(username=u).first()
-    if not user or not check_password_hash(user.password_hash,p): return jsonify({'error':'invalid credentials'}),401
-    if not user.is_active: return jsonify({'error':'account disabled'}),403
-    token=create_access_token(identity=str(user.id))
-    return jsonify({'access_token':token}),200
+    data = request.get_json() or {}
+    u = data.get('username'); p = data.get('password')
+    if not u or not p:
+        return jsonify({'error':'username and password required'}), 400
+
+    user = User.query.filter_by(username=u).first()
+    if not user or not check_password_hash(user.password_hash, p):
+        return jsonify({'error':'invalid credentials'}), 401
+    if not user.is_active:
+        return jsonify({'error':'account disabled'}), 403
+
+    # JWT 的 sub 必須是字串
+    token = create_access_token(identity=str(user.id))
+    return jsonify({'access_token': token}), 200
+
 
 @app.route('/devices', methods=['GET'])
 @jwt_required()
