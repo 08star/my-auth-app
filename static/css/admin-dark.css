@@ -1,207 +1,187 @@
 /* static/css/admin-dark.css */
 
-/* ---------- 自訂變數 ---------- */
+/* ===================================
+   自訂深色主題樣式 (High-Contrast Dark)
+   =================================== */
+
 :root {
-  --bg-dark:      #121212;    /* 主背景 */
-  --panel-dark:   #1E1E1E;    /* 卡片/面板背景 */
-  --heading-dark: #2A2A2A;    /* 標題列背景 */
-  --border:       #333333;    /* 分隔線 */
-  --text-main:    #E0E0E0;    /* 主要文字 */
-  --text-sub:     #A0A0A0;    /* 次要文字 */
-  --accent:       #4A90E2;    /* 主按鈕色 */
-  --accent-hover:#357ABD;     /* 主按鈕 hover */
-  --success:      #28A745;
-  --warning:      #FFC107;
-  --danger:       #DC3545;
+  --bg-dark:       #121212;
+  --panel-dark:    #1E1E1E;
+  --heading-dark:  #272727;
+  --border-color:  #3A3A3A;
+
+  --text-primary:  #E0E0E0;
+  --text-secondary:#B0B0B0;
+  --text-accent:   #4A90E2;
+
+  --btn-primary-bg:        #4A90E2;
+  --btn-primary-bg-hover:  #357ABD;
+  --btn-success-bg:        #28A745;
+  --btn-warning-bg:        #FFC107;
+  --btn-danger-bg:         #DC3545;
+  --btn-default-bg:        #2E2E2E;
+  --btn-disabled-bg:       #3A3A3A;
+  --btn-disabled-color:    #A0A0A0;
 }
 
-/* ---------- 全域設定 ---------- */
+/* 全域背景與文字 */
 body, .wrapper {
-  background-color: var(--bg-dark) !important;
-  color: var(--text-main) !important;
+  background: var(--bg-dark) !important;
+  color: var(--text-primary) !important;
   font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* ---------- Navbar ---------- */
-.navbar-inverse, .navbar {
-  background-color: var(--panel-dark) !important;
-  border-bottom: 1px solid var(--border) !important;
+/* Navbar */
+.navbar-inverse, .navbar-default {
+  background: var(--panel-dark) !important;
+  border-bottom: 1px solid var(--border-color) !important;
 }
 .navbar-inverse .navbar-brand,
 .navbar-inverse .nav > li > a {
-  color: var(--text-main) !important;
+  color: var(--text-primary) !important;
+  font-weight: 500;
 }
 .navbar-inverse .nav > li > a:hover,
 .navbar-inverse .navbar-brand:hover {
-  color: var(--accent) !important;
+  color: var(--text-accent) !important;
 }
 
-/* ---------- 面板 Panel ---------- */
+/* Panel */
 .panel {
-  background-color: var(--panel-dark) !important;
-  border: 1px solid var(--border) !important;
+  background: var(--panel-dark) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: 6px !important;
   box-shadow: 0 2px 6px rgba(0,0,0,0.7);
 }
 .panel-heading {
-  background-color: var(--heading-dark) !important;
-  border-bottom: 1px solid var(--border) !important;
-  color: var(--text-main) !important;
+  background: var(--heading-dark) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
   font-size: 1.1rem;
   font-weight: 600;
   padding: 12px 16px;
 }
 
-/* ---------- 表格 Table ---------- */
+/* 表格 */
 .table {
   background: transparent !important;
   border-collapse: separate !important;
-  border-spacing: 0 6px !important;
+  border-spacing: 0 8px !important;
 }
 .table > thead > tr > th {
-  background-color: var(--heading-dark) !important;
-  color: var(--text-main) !important;
-  border: none !important;
+  background: var(--heading-dark) !important;
+  color: var(--text-primary) !important;
   padding: 12px 16px !important;
+  border: none !important;
   font-weight: 600;
 }
 .table > tbody > tr {
-  background-color: var(--panel-dark) !important;
+  background: var(--panel-dark) !important;
   transition: background 0.2s;
 }
-.table > tbody > tr:hover {
-  background-color: var(--heading-dark) !important;
+.table > tbody > tr:nth-child(even) {
+  background: #1A1A1A !important;
 }
-.table > tbody > tr > td {
-  color: var(--text-main) !important;
+.table > tbody > tr:hover {
+  background: var(--heading-dark) !important;
+}
+.table td {
+  color: var(--text-primary) !important;
   padding: 12px 16px !important;
   border: none !important;
 }
-.table > tbody > tr:nth-child(even) {
-  background-color: #1A1A1A !important;
+
+/* 分頁 Tab */
+.nav-tabs > li > a {
+  color: var(--text-secondary) !important;
+  padding: 8px 16px !important;
+}
+.nav-tabs > li.active > a {
+  background: var(--panel-dark) !important;
+  color: var(--text-primary) !important;
+  border-bottom-color: var(--bg-dark) !important;
 }
 
-/* ---------- 連結 Links ---------- */
-a, .nav .dropdown-menu a {
-  color: var(--accent) !important;
+/* 連結 */
+a, .nav > li > a {
+  color: var(--text-accent) !important;
   transition: color 0.2s;
 }
 a:hover {
-  color: var(--accent-hover) !important;
+  color: var(--btn-primary-bg-hover) !important;
 }
 
-/* ---------- 按鈕 Buttons ---------- */
-.btn-primary {
-  background-color: var(--accent) !important;
-  border-color: var(--accent) !important;
-  color: #FFF !important;
+/* 按鈕 */
+.btn {
   border-radius: 4px !important;
-  padding: 8px 20px !important;
-  font-weight: 500;
+  font-weight: 500 !important;
+  padding: 8px 18px !important;
+  text-shadow: none !important;
+}
+.btn-primary {
+  background: var(--btn-primary-bg) !important;
+  border-color: var(--btn-primary-bg) !important;
+  color: #FFFFFF !important;
 }
 .btn-primary:hover, .btn-primary:focus {
-  background-color: var(--accent-hover) !important;
-  border-color: var(--accent-hover) !important;
-  color: #FFF !important;
+  background: var(--btn-primary-bg-hover) !important;
+  border-color: var(--btn-primary-bg-hover) !important;
 }
 .btn-success {
-  background-color: var(--success) !important;
-  border-color: var(--success) !important;
-  color: #FFF !important;
+  background: var(--btn-success-bg) !important;
+  border-color: var(--btn-success-bg) !important;
+  color: #FFFFFF !important;
 }
 .btn-warning {
-  background-color: var(--warning) !important;
-  border-color: var(--warning) !important;
-  color: #000 !important;
+  background: var(--btn-warning-bg) !important;
+  border-color: var(--btn-warning-bg) !important;
+  color: #000000 !important;
 }
 .btn-danger {
-  background-color: var(--danger) !important;
-  border-color: var(--danger) !important;
-  color: #FFF !important;
+  background: var(--btn-danger-bg) !important;
+  border-color: var(--btn-danger-bg) !important;
+  color: #FFFFFF !important;
 }
 .btn-default {
-  background-color: #2C2C2C !important;
-  border-color: var(--border) !important;
-  color: var(--text-main) !important;
+  background: var(--btn-default-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
 }
 .btn-default:hover {
-  background-color: #3A3A3A !important;
+  background: #3C3C3C !important;
+  border-color: #444444 !important;
+}
+.btn-default:disabled,
+.btn-default.disabled {
+  background: var(--btn-disabled-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--btn-disabled-color) !important;
+  opacity: 1 !important;
 }
 
-/* ---------- 表單輸入 Fields ---------- */
+/* 表單欄位 */
+.form-group label,
+.control-label {
+  color: var(--text-primary) !important;
+  font-weight: 500;
+}
 .form-control {
-  background-color: #1A1A1A !important;
-  border: 1px solid var(--border) !important;
-  color: var(--text-main) !important;
+  background: #1A1A1A !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: 4px !important;
+  color: var(--text-primary) !important;
   padding: 10px 14px !important;
 }
 .form-control::placeholder {
-  color: var(--text-sub) !important;
+  color: var(--text-secondary) !important;
 }
 .form-control:focus {
-  border-color: var(--accent) !important;
+  border-color: var(--text-accent) !important;
   box-shadow: 0 0 6px rgba(74,144,226,0.5) !important;
   outline: none !important;
 }
 
-/* ---------- 分頁 Pagination ---------- */
-.pagination > li > a,
-.pagination > li > span {
-  background-color: var(--panel-dark) !important;
-  border: 1px solid var(--border) !important;
-  color: var(--text-main) !important;
-  padding: 6px 12px;
-}
-.pagination > .active > a,
-.pagination > .active > span {
-  background-color: var(--accent) !important;
-  border-color: var(--accent) !important;
-  color: #FFF !important;
-}
-/* ====== 文字與標籤顏色 ====== */
-.form-group label,
-.control-label {
-  color: var(--text-main) !important;
-}
-
-/* 分頁標籤 */
-.nav-tabs > li > a,
-.nav-pills > li > a {
-  color: var(--text-main) !important;
-}
-.nav-tabs > li.active > a,
-.nav-pills > li.active > a {
-  background-color: var(--panel-dark) !important;
-  color: var(--accent) !important;
-}
-
-/* ====== 一般按鈕文字都用白色 ====== */
-.btn {
-  color: #FFF !important;
-}
-
-/* ====== 預設按鈕（btn-default） ====== */
-.btn-default {
-  background-color: #2F2F2F !important;
-  border-color: #444 !important;
-}
-.btn-default:hover {
-  background-color: #3C3C3C !important;
-}
-
-/* ====== 停用按鈕（保持可讀性） ====== */
-.btn-default:disabled,
-.btn-default.disabled,
-input[type="submit"]:disabled,
-.btn[disabled] {
-  background-color: #3A3A3A !important;
-  border-color: #555 !important;
-  color: #DDD !important;
-  opacity: 1 !important;  /* 取消 Bootstrap 的透明度效果 */
-}
-
-/* ---------- 圖示 Icons ---------- */
-.fa-check-circle { color: var(--success)  !important; }
-.fa-times-circle { color: var(--danger)   !important; }
-.fa-exclamation-triangle { color: var(--warning) !important; }
+/* 圖示 狀態色 */
+.fa-check-circle { color: var(--btn-success-bg) !important; }
+.fa-times-circle { color: var(--btn-danger-bg) !important; }
+.fa-exclamation-triangle { color: var(--btn-warning-bg) !important; }
