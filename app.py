@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, url_for, render_template, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import (
     JWTManager, create_access_token,
@@ -7,22 +7,24 @@ from flask_jwt_extended import (
 )
 from flask_babel import Babel, lazy_gettext as _l, gettext, ngettext
 import flask_admin as admin_ext
-from flask_admin import Admin
+from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
+from flask_login import (
+    LoginManager, UserMixin,
+    login_user, logout_user,
+    current_user, login_required
+)
 from wtforms import PasswordField
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── 1. 建立 Flask 應用與設定 ───────────────────────────────────────────────
 app = Flask(__name__)
-# 安全金鑰
 app.config['SECRET_KEY'] = os.environ.get(
-    'SECRET_KEY',
+    'SECRET_KEY', 
     '開發用_請換成更長的隨機字串'
 )
-# 資料庫連線
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth_devices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Babel 多語系設定
 app.config['BABEL_DEFAULT_LOCALE'] = 'zh_TW'
 app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
 
@@ -31,13 +33,17 @@ db    = SQLAlchemy(app)
 jwt   = JWTManager(app)
 babel = Babel(app)
 
-# 啟用 Jinja2 i18n extension，並 Monkey‐patch Flask-Admin 的翻譯函式
+# Flask-Login
+login_manager = LoginManager(app)
+login_manager.login_view = 'admin_login'
+
+# 啟用 Jinja2 i18n extension，並 Monkey-patch Flask-Admin 的翻譯函式
 app.jinja_env.add_extension('jinja2.ext.i18n')
 admin_ext.babel.gettext  = gettext
 admin_ext.babel.ngettext = ngettext
 
 # ── 3. 定義資料模型 ──────────────────────────────────────────────────────
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id            = db.Column(db.Integer, primary_key=True)
     username      = db.Column(db.String(80), unique=True, nullable=False)
@@ -53,8 +59,36 @@ class Device(db.Model):
     user_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user      = db.relationship('User', back_populates='devices')
 
-# ── 4. 自訂 Admin View（放模型之後）────────────────────────────────────
-class UserAdmin(ModelView):
+# User Loader for Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# ── 4. 自訂 AdminIndexView 與 SecureModelView ─────────────────────────────
+class MyAdminIndexView(AdminIndexView):
+    @expose('/')
+    def index(self):
+        if not current_user.is_authenticated:
+            return redirect(url_for('admin_login', next=request.url))
+        return super().index()
+
+class SecureModelView(ModelView):
+    def is_accessible(self):
+        return current_user.is_authenticated
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('admin_login', next=request.url))
+
+# ── 5. 建立 Admin 並掛上 View ────────────────────────────────────────────
+admin = Admin(
+    app,
+    name=_l('管理後臺'),
+    index_view=MyAdminIndexView(),
+    template_mode='bootstrap3',
+    base_template='admin/custom_master.html',
+    translations_path='translations'
+)
+
+class UserAdmin(SecureModelView):
     column_list  = ['id', 'username', 'is_active']
     column_labels = {
         'id':        _l('編號'),
@@ -83,7 +117,7 @@ class UserAdmin(ModelView):
             raise ValueError(_l("建立用戶需要密碼"))
         return super().on_model_change(form, model, is_created)
 
-class DeviceAdmin(ModelView):
+class DeviceAdmin(SecureModelView):
     column_list  = ['id', 'user.username', 'device_id', 'verified']
     column_labels = {
         'id':            _l('編號'),
@@ -102,18 +136,30 @@ class DeviceAdmin(ModelView):
     can_edit             = True
     can_delete           = False
 
-# ── 5. 建立 Admin 並掛上 View ────────────────────────────────────────────
-admin = Admin(
-    app,
-    name=_l('管理後臺'),
-    template_mode='bootstrap3',
-    base_template='admin/custom_master.html',
-    translations_path='translations'
-)
-admin.add_view(UserAdmin(User, db.session,   name=_l('使用者'), endpoint='user_admin'))
-admin.add_view(DeviceAdmin(Device, db.session, name=_l('裝置'),   endpoint='device_admin'))
+admin.add_view(UserAdmin(User, db.session, name=_l('使用者'), endpoint='user_admin'))
+admin.add_view(DeviceAdmin(Device, db.session, name=_l('裝置'), endpoint='device_admin'))
 
-# ── 6. REST API 路由 ─────────────────────────────────────────────────────
+# ── 6. 登入／登出 Route ────────────────────────────────────────────────────
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        u = request.form.get('username')
+        p = request.form.get('password')
+        user = User.query.filter_by(username=u).first()
+        if user and check_password_hash(user.password_hash, p):
+            login_user(user)
+            next_url = request.args.get('next') or url_for('admin.index')
+            return redirect(next_url)
+        flash(_l('帳號或密碼錯誤'), 'danger')
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+@login_required
+def admin_logout():
+    logout_user()
+    return redirect(url_for('admin_login'))
+
+# ── 7. REST API 路由 ─────────────────────────────────────────────────────
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify(status='ok')
@@ -195,10 +241,8 @@ def device_status():
 
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
-# ── 7. 啟動 ─────────────────────────────────────────────────────────────
+# ── 8. 啟動 ─────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    # 啟動前自動建表
     with app.app_context():
         db.create_all()
-    # 啟動服務
     app.run(host='0.0.0.0', port=8000)
