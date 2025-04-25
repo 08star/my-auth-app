@@ -1,137 +1,156 @@
 /* static/css/admin-dark.css */
 
+/* 定義自訂變數，方便後續維護 */
+:root {
+  --bg-dark:      #121212;
+  --panel-dark:   #1E1E1E;
+  --heading-dark: #282828;
+  --border:       #333333;
+  --text-main:    #E0E0E0;
+  --text-sub:     #A0A0A0;
+  --accent:       #0D6EFD;
+  --success:      #28A745;
+  --warning:      #FFC107;
+  --danger:       #DC3545;
+}
+
 /* 全域背景與文字 */
-body {
-  background-color: #18191A !important;
-  color: ##6a86cc !important;
+body, .wrapper {
+  background-color: var(--bg-dark) !important;
+  color: var(--text-main)   !important;
   font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* Navbar */
-.navbar-inverse {
-  background: linear-gradient(90deg, #242526, #1C1D1E) !important;
-  border-bottom: 2px solid #3A3B3C !important;
+.navbar-inverse, .navbar {
+  background-color: var(--panel-dark) !important;
+  border-bottom: 1px solid var(--border) !important;
 }
 .navbar-inverse .navbar-brand,
 .navbar-inverse .nav > li > a {
-  color: ##6a86cc !important;
+  color: var(--text-main) !important;
   font-weight: 500;
 }
 .navbar-inverse .nav > li > a:hover,
 .navbar-inverse .navbar-brand:hover {
-  color: #FFFFFF !important;
+  color: var(--accent) !important;
 }
 
-/* Panel 容器 */
+/* Panel */
 .panel {
-  background-color: #242526 !important;
-  border: 1px solid #3A3B3C !important;
+  background-color: var(--panel-dark) !important;
+  border: 1px solid var(--border) !important;
   border-radius: 6px !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 .panel-heading {
-  background: linear-gradient(180deg, #2E2F30, #242526) !important;
-  border-bottom: 1px solid #3A3B3C !important;
-  color: ##6a86cc !important;
-  font-size: 16px;
+  background-color: var(--heading-dark) !important;
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--text-main) !important;
+  font-size: 1rem;
   font-weight: 500;
+  padding: 10px 15px;
 }
 
-/* 表格樣式 */
+/* 表格 */
 .table {
   background: transparent !important;
-  border-collapse: separate;
-  border-spacing: 0 8px;
+  border-collapse: separate !important;
+  border-spacing: 0 6px !important;
 }
 .table > thead > tr > th {
-  background-color: #2E2F30 !important;
+  background-color: var(--heading-dark) !important;
+  color: var(--text-main) !important;
   border: none !important;
-  color: #BCC0C4 !important;
+  padding: 10px 12px !important;
   font-weight: 500;
-  padding: 12px 15px;
 }
 .table > tbody > tr {
-  background-color: #242526 !important;
-  border: none !important;
+  background-color: var(--panel-dark) !important;
   transition: background .2s;
 }
 .table > tbody > tr:hover {
-  background-color: #2C2D2E !important;
+  background-color: var(--heading-dark) !important;
 }
 .table > tbody > tr > td {
+  color: var(--text-main) !important;
+  padding: 10px 12px !important;
   border: none !important;
-  color: ##6a86cc !important;
-  padding: 12px 15px;
+}
+/* 條紋色：偶數列更深 */
+.table > tbody > tr:nth-child(even) {
+  background-color: #171717 !important;
 }
 
-/* 條紋效果（可選） */
-.table > tbody > tr:nth-child(odd) {
-  background-color: #1F2021 !important;
-}
-
-/* 連結與圖示 */
-a, .fa {
-  color: #8AB4F8 !important;
+/* 連結 */
+a, .nav .dropdown-menu a {
+  color: var(--accent) !important;
   transition: color .2s;
 }
-a:hover, .fa:hover {
-  color: #B2C7FF !important;
+a:hover {
+  color: #66B2FF !important;
 }
 
 /* 按鈕 */
 .btn-primary {
-  background-color: #3A61C9 !important;
-  border-color: #3554A5 !important;
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
   border-radius: 4px !important;
   padding: 6px 14px !important;
-  font-weight: 500;
 }
 .btn-primary:hover, .btn-primary:focus {
-  background-color: #4B75E2 !important;
-  border-color: #3A61C9 !important;
+  background-color: #0B5ED7 !important;
+  border-color: #0A58CA !important;
+}
+.btn-success {
+  background-color: var(--success) !important;
+  border-color: var(--success) !important;
+}
+.btn-warning {
+  background-color: var(--warning) !important;
+  border-color: var(--warning) !important;
+}
+.btn-danger {
+  background-color: var(--danger) !important;
+  border-color: var(--danger) !important;
 }
 .btn-default {
-  background-color: #3A3B3C !important;
-  border-color: #3A3B3C !important;
-  color: ##6a86cc !important;
-}
-.btn-default:hover {
-  background-color: #4A4C4E !important;
+  background-color: #2A2A2A !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
 }
 
 /* 表單輸入框 */
 .form-control {
-  background-color: #1F2021 !important;
-  border: 1px solid #3A3B3C !important;
+  background-color: #1A1A1A !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-main) !important;
   border-radius: 4px !important;
-  color: ##6a86cc !important;
-  padding: 8px 12px;
+  padding: 8px 12px !important;
+}
+.form-control::placeholder {
+  color: var(--text-sub) !important;
 }
 .form-control:focus {
-  border-color: #8AB4F8 !important;
-  box-shadow: 0 0 4px rgba(138,180,248,0.5) !important;
-  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 4px rgba(13,110,253,0.5) !important;
+  outline: none !important;
 }
 
-/* 分頁（pagination） */
+/* 分頁元件 */
 .pagination > li > a,
 .pagination > li > span {
-  background-color: #242526 !important;
-  border: 1px solid #3A3B3C !important;
-  color: ##6a86cc !important;
+  background-color: var(--panel-dark) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-main) !important;
 }
-.pagination > .active > a {
-  background-color: #3A61C9 !important;
-  border-color: #3554A5 !important;
-}
-
-/* 小提示（tooltip） */
-.tooltip-inner {
-  background-color: #3A3B3C !important;
-  color: ##6a86cc !important;
-  border: 1px solid #444 !important;
+.pagination > .active > a,
+.pagination > .active > span {
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
 }
 
-/* 調整圖示按鈕（例如 Is Active 顯示） */
-.fa-check-circle { color: #4CAF50 !important; }
-.fa-times-circle { color: #F44336 !important; }
+/* 圖示狀態色 */
+.fa-check-circle { color: var(--success) !important; }
+.fa-times-circle { color: var(--danger)  !important; }
+.fa-exclamation-triangle { color: var(--warning) !important; }
