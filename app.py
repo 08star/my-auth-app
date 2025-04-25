@@ -1,19 +1,15 @@
 """
-app.py - 帶管理介面的後端程式：帳號與裝置雙重授權管理
-
-Endpoints:
-  GET  /health               健康檢查
-  POST /auth/register        註冊帳號
-  POST /auth/login           登入並取得 JWT
-  GET  /devices              列出該帳號所有裝置及狀態
-  POST /devices/register     申請註冊新裝置
-  POST /devices/verify       標記裝置為已核准
-
-Admin UI:
-  使用 Flask-Admin，自動生成 /admin 頁面，可管理 User 和 Device
+app.py - 完整後端程式：帳號與裝置雙重授權管理 + Admin 介面功能擴充
+功能：
+  - /health
+  - /auth/register, /auth/login
+  - /devices, /devices/register, /devices/verify
+  - Admin GUI (/admin)：
+      * 管理 User（含啟用/停用）
+      * 管理 Device（含核准綁定）
 """
 import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import (
     JWTManager, create_access_token,
@@ -38,6 +34,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
     devices = db.relationship('Device', back_populates='user', lazy=True)
 
 class Device(db.Model):
@@ -46,7 +43,6 @@ class Device(db.Model):
     device_id = db.Column(db.String(128), nullable=False)
     verified = db.Column(db.Boolean, default=False)
     __table_args__ = (db.UniqueConstraint('user_id', 'device_id', name='uix_user_device'),)
-    # 明確定義 relationship 屬性，讓 Flask-Admin 可見
     user = db.relationship('User', back_populates='devices')
 
 # 建表
@@ -59,11 +55,17 @@ admin = Admin(app, name='AdminPanel', template_mode='bootstrap3')
 class UserAdmin(ModelView):
     column_exclude_list = ['password_hash']
     form_excluded_columns = ['password_hash', 'devices']
+    column_editable_list = ['is_active']
+    can_create = True
+    can_edit = True
+    can_delete = False
 
 class DeviceAdmin(ModelView):
     column_list = ('id', 'user.username', 'device_id', 'verified')
     column_labels = {'user.username': 'Username'}
     form_columns = ['user', 'device_id', 'verified']
+    column_editable_list = ['verified']
+    can_create = False
 
 admin.add_view(UserAdmin(User, db.session))
 admin.add_view(DeviceAdmin(Device, db.session))
@@ -73,6 +75,7 @@ admin.add_view(DeviceAdmin(Device, db.session))
 def health():
     return jsonify({"status": "ok"}), 200
 
+# 註冊帳號（admin 或自動）
 @app.route('/auth/register', methods=['POST'])
 def register():
     data = request.get_json() or {}
@@ -83,12 +86,14 @@ def register():
     db.session.add(user); db.session.commit()
     return jsonify({'msg':'user created'}),201
 
+# 登入並取得 JWT
 @app.route('/auth/login', methods=['POST'])
 def login():
     data=request.get_json() or {}; u=data.get('username'); p=data.get('password')
     if not u or not p: return jsonify({'error':'username and password required'}),400
     user=User.query.filter_by(username=u).first()
     if not user or not check_password_hash(user.password_hash,p): return jsonify({'error':'invalid credentials'}),401
+    if not user.is_active: return jsonify({'error':'account disabled'}),403
     token=create_access_token(identity=str(user.id))
     return jsonify({'access_token':token}),200
 
