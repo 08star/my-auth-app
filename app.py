@@ -91,4 +91,3 @@ def auth_verify():
 if __name__ == "__main__":
     os.makedirs("profiles", exist_ok=True)
     app.run(host="0.0.0.0", port=int(os.getenv('PORT', 8000)))
-
