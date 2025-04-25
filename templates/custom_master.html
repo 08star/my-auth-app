@@ -1,8 +1,0 @@
-{# templates/admin/custom_master.html #}
-{% extends 'admin/master.html' %}
-
-{% block head %}
-  {{ super() }}
-  <link rel="stylesheet"
-        href="{{ url_for('static', filename='css/admin-dark.css') }}">
-{% endblock %}
