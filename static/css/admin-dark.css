@@ -3,7 +3,7 @@
 /* 全域背景與文字 */
 body {
   background-color: #18191A !important;
-  color: #E4E6EB !important;
+  color: ##6a86cc !important;
   font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -14,7 +14,7 @@ body {
 }
 .navbar-inverse .navbar-brand,
 .navbar-inverse .nav > li > a {
-  color: #E4E6EB !important;
+  color: ##6a86cc !important;
   font-weight: 500;
 }
 .navbar-inverse .nav > li > a:hover,
@@ -32,7 +32,7 @@ body {
 .panel-heading {
   background: linear-gradient(180deg, #2E2F30, #242526) !important;
   border-bottom: 1px solid #3A3B3C !important;
-  color: #E4E6EB !important;
+  color: ##6a86cc !important;
   font-size: 16px;
   font-weight: 500;
 }
@@ -60,7 +60,7 @@ body {
 }
 .table > tbody > tr > td {
   border: none !important;
-  color: #E4E6EB !important;
+  color: ##6a86cc !important;
   padding: 12px 15px;
 }
 
@@ -93,7 +93,7 @@ a:hover, .fa:hover {
 .btn-default {
   background-color: #3A3B3C !important;
   border-color: #3A3B3C !important;
-  color: #E4E6EB !important;
+  color: ##6a86cc !important;
 }
 .btn-default:hover {
   background-color: #4A4C4E !important;
@@ -104,7 +104,7 @@ a:hover, .fa:hover {
   background-color: #1F2021 !important;
   border: 1px solid #3A3B3C !important;
   border-radius: 4px !important;
-  color: #E4E6EB !important;
+  color: ##6a86cc !important;
   padding: 8px 12px;
 }
 .form-control:focus {
@@ -118,7 +118,7 @@ a:hover, .fa:hover {
 .pagination > li > span {
   background-color: #242526 !important;
   border: 1px solid #3A3B3C !important;
-  color: #E4E6EB !important;
+  color: ##6a86cc !important;
 }
 .pagination > .active > a {
   background-color: #3A61C9 !important;
@@ -128,7 +128,7 @@ a:hover, .fa:hover {
 /* 小提示（tooltip） */
 .tooltip-inner {
   background-color: #3A3B3C !important;
-  color: #E4E6EB !important;
+  color: ##6a86cc !important;
   border: 1px solid #444 !important;
 }
 
