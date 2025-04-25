@@ -1,12 +1,17 @@
+"""
+app.py - 完整後端程式：帳號與裝置雙重授權管理
 
+Endpoints:
+  GET  /health               健康檢查
+  POST /auth/register        註冊帳號
+  POST /auth/login           登入並取得 JWT
+  GET  /devices              列出該帳號所有裝置及狀態
+  POST /devices/register     申請註冊新裝置
+  POST /devices/verify       標記裝置為已核准
+
+使用：Flask, SQLAlchemy, Flask-JWT-Extended, Werkzeug
 """
-後端伺服器：帳號與裝置雙重授權管理
-- /auth/register  註冊帳號
-- /auth/login     登入並回傳 JWT
-- /devices        列出已註冊裝置狀態
-- /devices/register 申請註冊裝置
-- /devices/verify   管理員網頁介面呼叫標記已核准
-"""
+import datetime
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import (
@@ -14,23 +19,18 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity
 )
 from werkzeug.security import generate_password_hash, check_password_hash
-import datetime
 
+# --- App & Config ---
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth_devices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_SECRET_KEY'] = 'your-very-secret-key'
+app.config['JWT_SECRET_KEY'] = 'CHANGE_THIS_TO_A_SECURE_RANDOM_VALUE'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(hours=1)
 
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
 
-# 立即建立表格
-with app.app_context():
-    db.create_all()
-
-# Models
-default_verified = False
+# --- Models ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -42,6 +42,15 @@ class Device(db.Model):
     device_id = db.Column(db.String(128), nullable=False)
     verified = db.Column(db.Boolean, default=False)
     __table_args__ = (db.UniqueConstraint('user_id', 'device_id', name='uix_user_device'),)
+
+# 建立資料表
+with app.app_context():
+    db.create_all()
+
+# --- Routes ---
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({"status": "ok"}), 200
 
 # 註冊帳號
 @app.route('/auth/register', methods=['POST'])
@@ -58,7 +67,7 @@ def register():
     db.session.commit()
     return jsonify({'msg': 'user created'}), 201
 
-# 登入取得 JWT
+# 登入並取得 JWT
 @app.route('/auth/login', methods=['POST'])
 def login():
     data = request.get_json() or {}
@@ -72,7 +81,7 @@ def login():
     token = create_access_token(identity=user.id)
     return jsonify({'access_token': token}), 200
 
-# 列出所有已註冊裝置及狀態
+# 列出所有已註冊裝置及其狀態
 @app.route('/devices', methods=['GET'])
 @jwt_required()
 def list_devices():
@@ -80,7 +89,7 @@ def list_devices():
     devs = Device.query.filter_by(user_id=user_id).all()
     return jsonify([{'device_id': d.device_id, 'verified': d.verified} for d in devs]), 200
 
-# 申請註冊裝置
+# 申請註冊新裝置
 @app.route('/devices/register', methods=['POST'])
 @jwt_required()
 def register_device():
@@ -89,13 +98,13 @@ def register_device():
     did = data.get('device_id')
     if not did:
         return jsonify({'error': 'device_id required'}), 400
-    dev = Device.query.filter_by(user_id=user_id, device_id=did).first()
-    if dev:
-        return jsonify({'msg': 'device already registered', 'verified': dev.verified}), 200
+    existing = Device.query.filter_by(user_id=user_id, device_id=did).first()
+    if existing:
+        return jsonify({'msg': 'already registered', 'verified': existing.verified}), 200
     dev = Device(user_id=user_id, device_id=did, verified=False)
     db.session.add(dev)
     db.session.commit()
-    return jsonify({'msg': 'device registration requested', 'verified': False}), 201
+    return jsonify({'msg': 'registration requested', 'verified': False}), 201
 
 # 標記裝置為已核准
 @app.route('/devices/verify', methods=['POST'])
@@ -113,5 +122,6 @@ def verify_device():
     db.session.commit()
     return jsonify({'msg': 'device verified'}), 200
 
+# --- Run server ---
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
