@@ -57,14 +57,39 @@ with app.app_context():
 admin = Admin(app, name='AdminPanel', template_mode='bootstrap3')
 
 class UserAdmin(ModelView):
+    # 列表要顯示的欄位
     column_list = ['id', 'username', 'is_active']
-    form_columns = ['username', 'is_active']
+
+    # 建立／編輯表單要的欄位：username, password, is_active
+    form_columns = ['username', 'password', 'is_active']
+
+    # 不要讓它直接編輯這兩個
     form_excluded_columns = ['password_hash', 'devices']
     column_exclude_list   = ['password_hash']
     column_editable_list  = ['is_active']
-    can_create = True   # ← 關掉「Create」功能
+
+    # 允許新增／編輯
+    can_create = True
     can_edit   = True
     can_delete = False
+
+    # 新增一個「密碼 (password)」欄位
+    form_extra_fields = {
+        'password': PasswordField('Password')
+    }
+
+    # 在儲存 model 前，處理明文密碼 → hash
+    def on_model_change(self, form, model, is_created):
+        # form.password.data 是 user 在表單輸入的明文密碼
+        if form.password.data:
+            model.password_hash = generate_password_hash(form.password.data)
+        elif is_created:
+            # 新增時一定要填密碼
+            raise ValueError("Password is required when creating a new user")
+        return super().on_model_change(form, model, is_created)
+
+# 把 Admin view 註冊回去
+admin.add_view(UserAdmin(User, db.session))
 
 
 class DeviceAdmin(ModelView):
