@@ -78,6 +78,17 @@ admin.add_view(DeviceAdmin(Device, db.session, name='Devices', endpoint='device_
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify(status='ok')
+@app.route('/auth/register', methods=['POST'])
+def auth_register():
+    data = request.get_json() or {}
+    u = data.get('username'); p = data.get('password')
+    if not u or not p:
+        return jsonify(error='username and password required'), 400
+    if User.query.filter_by(username=u).first():
+        return jsonify(error='username exists'), 409
+    user = User(username=u, password_hash=generate_password_hash(p))
+    db.session.add(user); db.session.commit()
+    return jsonify(msg='user created'), 201
 
 @app.route('/auth/login', methods=['POST'])
 def auth_login():
@@ -96,7 +107,7 @@ def auth_login():
     token = create_access_token(identity=user.username)
     return jsonify(access_token=token), 200
 
-@app.route('/device/bind', methods=['POST'])
+@app.route('/devices/register', methods=['POST'])
 @jwt_required()
 def device_bind():
     username = get_jwt_identity()
@@ -117,7 +128,7 @@ def device_bind():
         db.session.commit()
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
-@app.route('/device/status', methods=['POST'])
+@app.route('/devices', methods=['GET'])
 @jwt_required()
 def device_status():
     username = get_jwt_identity()
