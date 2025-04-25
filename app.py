@@ -47,7 +47,9 @@ class Device(db.Model):
 
 # 建表
 with app.app_context():
+    db.drop_all()
     db.create_all()
+
 
 # --- Flask-Admin Setup ---
 admin = Admin(app, name='AdminPanel', template_mode='bootstrap3')
