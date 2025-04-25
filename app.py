@@ -16,9 +16,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db  = SQLAlchemy(app)
 jwt = JWTManager(app)
-# 第一次啟動建立資料表
-with app.app_context():
-    db.create_all()
+
 # ── 資料模型 ─────────────────────────────────────────────────────
 class User(db.Model):
     id            = db.Column(db.Integer, primary_key=True)
@@ -33,6 +31,9 @@ class Device(db.Model):
     verified   = db.Column(db.Boolean, default=False, nullable=False)
     user_id    = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
+@app.before_serving
+def init_db():
+    db.create_all()
 
 
 # ── 管理介面 (Flask-Admin) ───────────────────────────────────────
