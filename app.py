@@ -39,7 +39,7 @@ with app.app_context():
 
 
 # ── 管理介面 (Flask-Admin) ───────────────────────────────────────
-admin = Admin(app, name='AdminPanel', template_mode='bootstrap3', base_template='admin/master.html',)
+admin = Admin(app, name='AdminPanel', template_mode='bootstrap3', base_template='templates/admin/master.html',)
 
 
 class UserAdmin(ModelView):
