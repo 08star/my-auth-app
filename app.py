@@ -43,7 +43,7 @@ admin = Admin(
     app,
     name='AdminPanel',
     template_mode='bootstrap3',
-    base_template='admin/custom_master.html',   # ← point here
+    base_template='custom_master.html',
 )
 
 
