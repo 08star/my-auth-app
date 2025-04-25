@@ -9,6 +9,7 @@ app.py - 完整後端程式：帳號與裝置雙重授權管理 + Admin 介面�
       * 管理 Device（含核准綁定）
 """
 import datetime
+from wtforms import PasswordField
 from flask import Flask, request, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import (
