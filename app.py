@@ -52,7 +52,13 @@ class User(db.Model):
     username      = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     is_active     = db.Column(db.Boolean, default=True)
-    devices       = db.relationship('Device', backref='user', lazy=True)
+
+    # 雙向關聯：User.devices <-> Device.user
+    devices       = db.relationship(
+        'Device',
+        back_populates='user',
+        lazy=True
+    )
 
 class Device(db.Model):
     __tablename__ = 'devices'
@@ -60,8 +66,16 @@ class Device(db.Model):
     device_id = db.Column(db.String(128), unique=True, nullable=False)
     verified  = db.Column(db.Boolean, default=False)
     user_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-
-
+    user_id   = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id'),
+        nullable=False
+    )
+    # 明確定義雙向關聯
+    user      = db.relationship(
+        'User',
+        back_populates='devices'
+    )
 
 # ── 4. 自訂 Admin View ───────────────────────────────────────────────────
 class UserAdmin(ModelView):
