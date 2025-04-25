@@ -23,13 +23,14 @@ class User(db.Model):
     username      = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     is_active     = db.Column(db.Boolean, default=True, nullable=False)
-    devices       = db.relationship('Device', backref='user', lazy=True)
+    devices       = db.relationship('Device', back_populates='user', lazy=True)
 
 class Device(db.Model):
     id         = db.Column(db.Integer, primary_key=True)
     device_id  = db.Column(db.String(64), nullable=False)
     verified   = db.Column(db.Boolean, default=False, nullable=False)
     user_id    = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user       = db.relationship('User', back_populates='devices')
 
 
 # 模組載入時直接建表
