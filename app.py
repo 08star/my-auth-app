@@ -56,9 +56,11 @@ with app.app_context():
 admin = Admin(app, name='AdminPanel', template_mode='bootstrap3')
 
 class UserAdmin(ModelView):
-    # 一律用 list
+    # 列表要顯示的欄位，一定要 list
     column_list = ['id', 'username', 'is_active']
-    form_columns  = ['username', 'is_active']
+    # 建立／編輯表單要的欄位，一定要 list
+    form_columns = ['username', 'is_active']
+    # 不要顯示的
     form_excluded_columns = ['password_hash', 'devices']
     column_exclude_list   = ['password_hash']
     column_editable_list  = ['is_active']
@@ -67,12 +69,13 @@ class UserAdmin(ModelView):
     can_delete = False
 
 class DeviceAdmin(ModelView):
-    # column_list 也改成 list
     column_list = ['id', 'user.username', 'device_id', 'verified']
+    form_columns = ['user', 'device_id', 'verified']
     column_labels = {'user.username': 'Username'}
-    form_columns  = ['user', 'device_id', 'verified']
     column_editable_list = ['verified']
     can_create = False
+    can_edit   = True
+    can_delete = False
 
 admin.add_view(UserAdmin(User, db.session))
 admin.add_view(DeviceAdmin(Device, db.session))
