@@ -1,0 +1,18 @@
+/* static/css/admin-dark.css */
+body, .navbar, .panel, .table, .form-control {
+    background-color: #222 !important;
+    color: #eee    !important;
+  }
+  .navbar, .panel-heading {
+    border-color: #444 !important;
+  }
+  .table>thead>tr>th {
+    border-bottom: 1px solid #444 !important;
+  }
+  a, .navbar-brand, .nav>li>a {
+    color: #ddd !important;
+  }
+  a:hover {
+    color: #fff !important;
+  }
+  
