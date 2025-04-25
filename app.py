@@ -9,42 +9,47 @@ from wtforms import PasswordField
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── 基本設定 ─────────────────────────────────────────────────────
+import os
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager
+from flask_babel import Babel, gettext, ngettext, lazy_gettext as _l
+import flask_admin as admin_ext
+from flask_admin import Admin
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '開發用_請換成更長的隨機字串')
+app.config['SECRET_KEY'] = os.environ.get(
+    'SECRET_KEY',
+    '開發用_請換成更長的隨機字串'
+)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth_devices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db  = SQLAlchemy(app)
-jwt = JWTManager(app)
+# ------ 1. 先初始化 Babel ------
+app.config['BABEL_DEFAULT_LOCALE'] = 'zh_TW'
+app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
+babel = Babel(app)
 
-# ── 資料模型 ─────────────────────────────────────────────────────
-class User(db.Model):
-    id            = db.Column(db.Integer, primary_key=True)
-    username      = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    is_active     = db.Column(db.Boolean, default=True, nullable=False)
-    devices       = db.relationship('Device', back_populates='user', lazy=True)
+# 告訴 Jinja2 啟用 i18n 拓展（讓 template 裡的 gettext 能跑）
+app.jinja_env.add_extension('jinja2.ext.i18n')
 
-class Device(db.Model):
-    id         = db.Column(db.Integer, primary_key=True)
-    device_id  = db.Column(db.String(64), nullable=False)
-    verified   = db.Column(db.Boolean, default=False, nullable=False)
-    user_id    = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    user       = db.relationship('User', back_populates='devices')
+# ------ 2. Monkey-patch Flask-Admin 內部的 babel ------
+#    讓它去用 flask_babel.gettext
+admin_ext.babel.gettext  = gettext
+admin_ext.babel.ngettext = ngettext
 
-
-# 模組載入時直接建表
-with app.app_context():
-    db.create_all()
-
-
-# ── 管理介面 (Flask-Admin) ───────────────────────────────────────
+# ------ 3. 再來建立 Admin，並使用 lazy_gettext 翻譯名字 ------
 admin = Admin(
     app,
-    name='AdminPanel',
+    name=_l('管理後臺'),
     template_mode='bootstrap3',
-    base_template='custom_master.html',
+    translations_path='translations'
 )
+
+# ------ 4. 最後再初始化其它 extensions ------
+db    = SQLAlchemy(app)
+jwt   = JWTManager(app)
+
 
 
 
