@@ -182,14 +182,13 @@ def device_status():
 
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
-# ── 6. 啟動 ─────────────────────────────────────────────────────────────
-
-
- if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
-    # 啟動前建立所有資料表
+# ── 啟動 ─────────────────────────────────────────────────────────────
+if __name__ == '__main__':
+    # 啟動前建表
     with app.app_context():
         db.create_all()
 
+    # 啟動服務
     app.run(host='0.0.0.0', port=8000)
+
 
