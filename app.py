@@ -21,6 +21,7 @@ from flask_admin.contrib.sqla import ModelView
 
 # --- App & Config ---
 app = Flask(__name__)
+app.config['SECRET_KEY'] = '請換成你自己的一長串隨機字元'  # ← 加上這行
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth_devices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'CHANGE_THIS_TO_A_SECURE_RANDOM_VALUE'
