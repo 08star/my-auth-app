@@ -9,51 +9,13 @@ from wtforms import PasswordField
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── 基本設定 ─────────────────────────────────────────────────────
-import os
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager
-from flask_babel import Babel, gettext, ngettext, lazy_gettext as _l
-import flask_admin as admin_ext
-from flask_admin import Admin
-
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get(
-    'SECRET_KEY',
-    '開發用_請換成更長的隨機字串'
-)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '開發用_請換成更長的隨機字串')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth_devices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# ------ Babel 設定 ------
-app.config['BABEL_DEFAULT_LOCALE'] = 'zh_TW'
-app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
-babel = Babel(app)
-
-# 告訴 Jinja2 啟用 i18n 拓展
-app.jinja_env.add_extension('jinja2.ext.i18n')
-
-# Monkey‐patch Flask-Admin 內建的 babel.gettext → flask_babel.gettext
-admin_ext.babel.gettext  = gettext
-admin_ext.babel.ngettext = ngettext
-
-# ------ Admin 後台 ------
-admin = Admin(
-    app,
-    name=_l('管理後臺'),         # 採用 lazy_gettext，名稱也可翻
-    template_mode='bootstrap3',
-    translations_path='translations'
-)
-
-# 初始化其他 extensions
-db    = SQLAlchemy(app)
-jwt   = JWTManager(app)
-
-# ---- 之後註冊你的 ModelViews 如：
-# from .views import UserAdminView
-# admin.add_view(UserAdminView(User, db.session))
-
-
+db  = SQLAlchemy(app)
+jwt = JWTManager(app)
 
 # ── 資料模型 ─────────────────────────────────────────────────────
 class User(db.Model):
@@ -74,6 +36,17 @@ class Device(db.Model):
 # 模組載入時直接建表
 with app.app_context():
     db.create_all()
+
+
+# ── 管理介面 (Flask-Admin) ───────────────────────────────────────
+admin = Admin(
+    app,
+    name='AdminPanel',
+    template_mode='bootstrap3',
+    base_template='custom_master.html',
+)
+
+
 
 
 class UserAdmin(ModelView):
