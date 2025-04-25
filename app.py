@@ -1,10 +1,10 @@
+```python
 import os
 import uuid
 import time
-import models
 from flask import Flask, request, jsonify, abort
 from extensions import db
-from extensions import db
+import models   # register models after db
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
@@ -14,10 +14,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
-# 載入 models
-from models import User, Device
-
-# Selenium session store
+# store active Selenium sessions
 sessions = {}
 
 @app.route("/health", methods=["GET"])
@@ -47,14 +44,23 @@ def auth_login():
         driver = webdriver.Chrome(options=options)
         driver.get("https://www.instagram.com/accounts/login/")
         time.sleep(3)
-        # … 其餘操作 …
+        driver.find_element(By.NAME, "username").send_keys(username)
+        driver.find_element(By.NAME, "password").send_keys(password)
+        driver.find_element(By.XPATH, "//button[@type='submit']").click()
+        time.sleep(5)
     except Exception as e:
         if driver:
             driver.quit()
-        abort(500, description=f"Login error: {e}")
+        return jsonify({"error": f"Login error: {e}"}), 500
 
+    # store session
     sessions[session_id] = driver
-    # … 回傳 challenge 狀態 …
+
+    # determine if challenge required
+    if "challenge" in driver.current_url:
+        return jsonify({"session_id": session_id, "challenge": True}), 202
+    else:
+        return jsonify({"session_id": session_id, "challenge": False}), 200
 
 @app.route("/auth/verify", methods=["POST"])
 def auth_verify():
@@ -63,6 +69,7 @@ def auth_verify():
     driver = sessions.get(sid)
     if not driver:
         return jsonify({"error": "invalid session_id"}), 400
+
     code = data.get("code")
     try:
         if code:
@@ -74,7 +81,9 @@ def auth_verify():
             btn.click()
         time.sleep(5)
     except Exception as e:
-        abort(500, description=f"Verify error: {e}")
+        return jsonify({"error": f"Verify error: {e}"}), 500
+
+    # check post-verification URL
     if "challenge" in driver.current_url:
         return jsonify({"verified": False}), 401
     return jsonify({"verified": True}), 200
@@ -82,3 +91,4 @@ def auth_verify():
 if __name__ == "__main__":
     os.makedirs("profiles", exist_ok=True)
     app.run(host="0.0.0.0", port=int(os.getenv('PORT', 8000)))
+```
