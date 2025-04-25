@@ -1,90 +1,89 @@
-import os
-import uuid
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import (
-    JWTManager, create_access_token,
-    jwt_required, get_jwt_identity
+from flask import (
+    Flask, request, redirect,
+    url_for, render_template, flash
 )
+from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager
 from flask_babel import Babel, lazy_gettext as _l, gettext, ngettext
 import flask_admin as admin_ext
-from flask_admin import Admin
+from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
-from wtforms import PasswordField
-from werkzeug.security import generate_password_hash, check_password_hash
-
-# ── 1. 建立 Flask 應用與設定 ───────────────────────────────────────────────
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get(
-    'SECRET_KEY',
-    '開發用_請換成更長的隨機字串'
+from flask_login import (
+    LoginManager, UserMixin,
+    login_user, logout_user,
+    current_user, login_required
 )
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth_devices.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+from werkzeug.security import generate_password_hash, check_password_hash
+from wtforms import PasswordField
 
-# Babel 設定
-app.config['BABEL_DEFAULT_LOCALE'] = 'zh_TW'
-app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
+app = Flask(__name__)
+# …（前面原本的設定略）…
 
-# ── 2. 初始化擴充套件 ────────────────────────────────────────────────────
+# ── 1. 初始化擴充套件 ───────────────────
 db    = SQLAlchemy(app)
 jwt   = JWTManager(app)
 babel = Babel(app)
 
-# 告訴 Jinja2 啟用 i18n
-app.jinja_env.add_extension('jinja2.ext.i18n')
-# Monkey‐patch Flask-Admin 的翻譯函式
-admin_ext.babel.gettext  = gettext
-admin_ext.babel.ngettext = ngettext
+# Flask-Login
+login_manager = LoginManager(app)
+login_manager.login_view = 'admin_login'
 
-# 建立 Admin
+from models import User, Device   # 假設你把模型放在 models.py
+
+class AuthUser(UserMixin, User):
+    pass
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# ── 2. 自訂 AdminIndexView ─────────────────
+class MyAdminIndexView(AdminIndexView):
+    @expose('/')
+    def index(self):
+        if not current_user.is_authenticated:
+            return redirect(url_for('admin_login', next=request.url))
+        return super().index()
+
+# ── 3. 自訂 ModelView 要求登入 ───────────────
+class SecureModelView(ModelView):
+    def is_accessible(self):
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('admin_login', next=request.url))
+
+# ── 4. 建立 Admin 並掛上 SecureModelView ────
 admin = Admin(
-  app,
-  name=_l('管理後臺'),
-  template_mode='bootstrap3',
-  base_template='admin/custom_master.html',   # ← 這行要有
-  translations_path='translations'
+    app,
+    name=_l('管理後臺'),
+    template_mode='bootstrap3',
+    index_view=MyAdminIndexView(),
+    base_template='admin/custom_master.html',
+    translations_path='translations'
 )
+admin.add_view(SecureModelView(User,   db.session, name=_l('使用者'), endpoint='user_admin'))
+admin.add_view(SecureModelView(Device, db.session, name=_l('裝置'),   endpoint='device_admin'))
 
+# ── 5. 登入登出路由 ─────────────────────────
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        u = request.form.get('username')
+        p = request.form.get('password')
+        user = User.query.filter_by(username=u).first()
+        if user and check_password_hash(user.password_hash, p):
+            login_user(user)
+            next_url = request.args.get('next') or url_for('admin.index')
+            return redirect(next_url)
+        flash('帳號或密碼錯誤', 'danger')
+    return render_template('admin_login.html')
 
-from flask_babel import gettext as _
-
-class UserAdmin(ModelView):
-    # 原本的設定…
-    column_list  = ['id', 'username', 'is_active']
-    form_columns = ['username', 'password', 'is_active']
-    # 加上這段，告訴它要怎麼顯示欄位名稱
-    column_labels = {
-        'id':        _('編號'),
-        'username':  _('使用者名稱'),
-        'is_active': _('啟用狀態'),
-    }
-    # 同理，表單欄位也可以自訂 label
-    form_args = {
-        'username': {'label': _('使用者名稱')},
-        'password': {'label': _('密碼')},
-        'is_active': {'label': _('啟用狀態')},
-    }
-    form_extra_fields = {
-        'password': PasswordField(_('密碼'))
-    }
-    # …其餘不變
-
-class DeviceAdmin(ModelView):
-    column_list = ['id', 'user.username', 'device_id', 'verified']
-    column_labels = {
-        'id':            _('編號'),
-        'user.username': _('使用者'),
-        'device_id':     _('裝置 ID'),
-        'verified':      _('已驗證'),
-    }
-    form_args = {
-        'user':      {'label': _('使用者')},
-        'device_id': {'label': _('裝置 ID')},
-        'verified':  {'label': _('已驗證')},
-    }
-    # …其餘不變
-
+@app.route('/admin/logout')
+@login_required
+def admin_logout():
+    logout_user()
+    return redirect(url_for('admin_login'))
 
 
 # ── 3. 定義資料模型 ──────────────────────────────────────────────────────
