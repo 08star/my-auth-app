@@ -78,7 +78,7 @@ def login():
     user = User.query.filter_by(username=u).first()
     if not user or not check_password_hash(user.password_hash, p):
         return jsonify({'error': 'invalid credentials'}), 401
-    token = create_access_token(identity=user.id)
+    token = create_access_token(identity=str(user.id))
     return jsonify({'access_token': token}), 200
 
 # 列出所有已註冊裝置及其狀態
