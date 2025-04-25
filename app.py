@@ -51,59 +51,45 @@ class Device(db.Model):
 with app.app_context():
     db.drop_all()
     db.create_all()
+# … 省略 app/db/User/Device 定義 …
 
-
-# --- Flask-Admin Setup ---
 # --- Flask-Admin Setup ---
 admin = Admin(app, name='AdminPanel', template_mode='bootstrap3')
 
 class UserAdmin(ModelView):
-    # 列表要顯示的欄位
-    column_list = ['id', 'username', 'is_active']
+    column_list            = ['id', 'username', 'is_active']
+    form_columns           = ['username', 'password', 'is_active']
+    form_excluded_columns  = ['password_hash', 'devices']
+    column_exclude_list    = ['password_hash']
+    column_editable_list   = ['is_active']
+    can_create             = True
+    can_edit               = True
+    can_delete             = False
 
-    # 建立／編輯表單要的欄位：username, password, is_active
-    form_columns = ['username', 'password', 'is_active']
-
-    # 不要讓它直接編輯這兩個
-    form_excluded_columns = ['password_hash', 'devices']
-    column_exclude_list   = ['password_hash']
-    column_editable_list  = ['is_active']
-
-    # 允許新增／編輯
-    can_create = True
-    can_edit   = True
-    can_delete = False
-
-    # 新增一個「密碼 (password)」欄位
     form_extra_fields = {
         'password': PasswordField('Password')
     }
 
-    # 在儲存 model 前，處理明文密碼 → hash
     def on_model_change(self, form, model, is_created):
-        # form.password.data 是 user 在表單輸入的明文密碼
         if form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
         elif is_created:
-            # 新增時一定要填密碼
             raise ValueError("Password is required when creating a new user")
         return super().on_model_change(form, model, is_created)
 
-# 把 Admin view 註冊回去
-admin.add_view(UserAdmin(User, db.session))
-
-
 class DeviceAdmin(ModelView):
-    column_list = ['id', 'user.username', 'device_id', 'verified']
-    form_columns = ['user', 'device_id', 'verified']
-    column_labels = {'user.username': 'Username'}
+    column_list          = ['id', 'user.username', 'device_id', 'verified']
+    form_columns         = ['user', 'device_id', 'verified']
+    column_labels        = {'user.username': 'Username'}
     column_editable_list = ['verified']
-    can_create = False
-    can_edit   = True
-    can_delete = False
+    can_create           = False
+    can_edit             = True
+    can_delete           = False
 
-admin.add_view(UserAdmin(User, db.session))
-admin.add_view(DeviceAdmin(Device, db.session))
+# 只註冊一次 UserAdmin，並指定 endpoint 不衝突
+admin.add_view(UserAdmin(User, db.session, name='Users',   endpoint='user_admin'))
+admin.add_view(DeviceAdmin(Device, db.session, name='Devices', endpoint='device_admin'))
+
 
 # --- API Routes ---
 @app.route('/health', methods=['GET'])
