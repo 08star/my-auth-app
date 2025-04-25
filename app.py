@@ -41,27 +41,32 @@ with app.app_context():
 # ── 管理介面 (Flask-Admin) ───────────────────────────────────────
 admin = Admin(app, name='AdminPanel', template_mode='bootstrap3')
 
-class UserAdmin(ModelView):
-    column_list            = ['id', 'username', 'is_active']
-    form_columns           = ['username', 'password', 'is_active']
-    form_excluded_columns  = ['password_hash', 'devices']
-    column_exclude_list    = ['password_hash']
-    column_editable_list   = ['is_active']
-    can_create             = True
-    can_edit               = True
-    can_delete             = False
 
+class UserAdmin(ModelView):
+    column_list           = ['id', 'username', 'is_active']
+    form_columns          = ['username', 'password', 'is_active']
+    form_excluded_columns = ['password_hash', 'devices']
+    column_exclude_list   = ['password_hash']
+    column_editable_list  = ['is_active']
+    can_create            = True
+    can_edit              = True
+    can_delete            = False
+
+    # add a virtual "password" field
     form_extra_fields = {
         'password': PasswordField('Password')
     }
 
     def on_model_change(self, form, model, is_created):
-        # 新增或修改時，若有填密碼就 hash
-        if form.password.data:
+        # only hash if the user actually supplied a password
+        if hasattr(form, 'password') and form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
         elif is_created:
+            # when creating, password is mandatory
             raise ValueError("Creating user requires a password")
         return super().on_model_change(form, model, is_created)
+
+
 
 class DeviceAdmin(ModelView):
     column_list          = ['id', 'user.username', 'device_id', 'verified']
