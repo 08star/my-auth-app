@@ -52,28 +52,25 @@ with app.app_context():
 
 
 # --- Flask-Admin Setup ---
+# --- Flask-Admin Setup ---
 admin = Admin(app, name='AdminPanel', template_mode='bootstrap3')
 
 class UserAdmin(ModelView):
-    # 顯示在列表裡的欄位
-    column_list = ['id','username','is_active']
-
-    # 新增/編輯表單只要這兩個欄位
-    form_columns = ['username','is_active']
-
-    # 不要讓它去處理這些
-    form_excluded_columns = ['password_hash','devices']
-    column_exclude_list    = ['password_hash']
-    column_editable_list   = ['is_active']
+    # 一律用 list
+    column_list = ['id', 'username', 'is_active']
+    form_columns  = ['username', 'is_active']
+    form_excluded_columns = ['password_hash', 'devices']
+    column_exclude_list   = ['password_hash']
+    column_editable_list  = ['is_active']
     can_create = True
     can_edit   = True
     can_delete = False
 
-
 class DeviceAdmin(ModelView):
-    column_list = ('id', 'user.username', 'device_id', 'verified')
+    # column_list 也改成 list
+    column_list = ['id', 'user.username', 'device_id', 'verified']
     column_labels = {'user.username': 'Username'}
-    form_columns = ['user', 'device_id', 'verified']
+    form_columns  = ['user', 'device_id', 'verified']
     column_editable_list = ['verified']
     can_create = False
 
