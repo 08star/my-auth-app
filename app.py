@@ -43,7 +43,6 @@ admin = Admin(
     app,
     name='AdminPanel',
     template_mode='bootstrap3',
-    base_template='admin/master.html',    # ← point to your override
 )
 
 
