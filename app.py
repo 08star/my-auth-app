@@ -9,13 +9,36 @@ from wtforms import PasswordField
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── 基本設定 ─────────────────────────────────────────────────────
+from flask_babel import Babel
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '開發用_請換成更長的隨機字串')
+# 安全金鑰
+app.config['SECRET_KEY'] = os.environ.get(
+    'SECRET_KEY',
+    '開發用_請換成更長的隨機字串'
+)
+# 資料庫
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth_devices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db  = SQLAlchemy(app)
-jwt = JWTManager(app)
+# Babel 設定：預設使用繁體中文、翻譯檔放在 translations 資料夾
+app.config['BABEL_DEFAULT_LOCALE'] = 'zh_TW'
+app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
+
+# 初始化擴充套件
+db    = SQLAlchemy(app)
+jwt   = JWTManager(app)
+babel = Babel(app)
+
+# ── 管理介面 (Flask-Admin) ───────────────────────────────────────
+# Admin 後台設定
+admin = Admin(
+    app,
+    name='管理後臺',
+    template_mode='bootstrap3',
+    translations_path='translations'  # 指向 Babel 的翻譯檔
+)
+
 
 # ── 資料模型 ─────────────────────────────────────────────────────
 class User(db.Model):
@@ -36,17 +59,6 @@ class Device(db.Model):
 # 模組載入時直接建表
 with app.app_context():
     db.create_all()
-
-
-# ── 管理介面 (Flask-Admin) ───────────────────────────────────────
-admin = Admin(
-    app,
-    name='AdminPanel',
-    template_mode='bootstrap3',
-    base_template='custom_master.html',
-)
-
-
 
 
 class UserAdmin(ModelView):
