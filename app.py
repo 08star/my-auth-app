@@ -3,7 +3,7 @@ import uuid
 import time
 import models
 from flask import Flask, request, jsonify, abort
-from flask_sqlalchemy import SQLAlchemy
+from extensions import db
 from extensions import db
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -11,7 +11,7 @@ from selenium.webdriver.common.by import By
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+
 db.init_app(app)
 
 # 載入 models
