@@ -42,7 +42,8 @@ with app.app_context():
 admin = Admin(
     app,
     name='AdminPanel',
-    template_mode='bootstrap3',   # ← point to your override
+    template_mode='bootstrap3',
+    base_template='admin/master.html',    # ← point to your override
 )
 
 
