@@ -39,11 +39,13 @@ admin_ext.babel.ngettext = ngettext
 
 # 建立 Admin
 admin = Admin(
-    app,
-    name=_l('管理後臺'),
-    template_mode='bootstrap3',
-    translations_path='translations'
+  app,
+  name=_l('管理後臺'),
+  template_mode='bootstrap3',
+  base_template='admin/custom_master.html',   # ← 這行要有
+  translations_path='translations'
 )
+
 
 from flask_babel import gettext as _
 
