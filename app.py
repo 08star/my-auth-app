@@ -44,10 +44,7 @@ class Device(db.Model):
     user_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user      = db.relationship('User', back_populates='devices')
 
-# 第一次 request 前自動建表
-@app.before_first_request
-def create_tables():
-    db.create_all()
+
 
 # ── 4. 自訂 Admin View ───────────────────────────────────
 class UserAdmin(ModelView):
@@ -185,5 +182,11 @@ def device_status():
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
 # ── 7. 啟動 ─────────────────────────────────────────────────
+# ── 7. 啟動 ─────────────────────────────────────────────────
 if __name__ == '__main__':
+    # 啟動前建表（適用所有 Flask 版本）
+    with app.app_context():
+        db.create_all()
+
     app.run(host='0.0.0.0', port=8000)
+
