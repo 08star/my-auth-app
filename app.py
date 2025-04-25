@@ -45,6 +45,46 @@ admin = Admin(
     translations_path='translations'
 )
 
+from flask_babel import gettext as _
+
+class UserAdmin(ModelView):
+    # 原本的設定…
+    column_list  = ['id', 'username', 'is_active']
+    form_columns = ['username', 'password', 'is_active']
+    # 加上這段，告訴它要怎麼顯示欄位名稱
+    column_labels = {
+        'id':        _('編號'),
+        'username':  _('使用者名稱'),
+        'is_active': _('啟用狀態'),
+    }
+    # 同理，表單欄位也可以自訂 label
+    form_args = {
+        'username': {'label': _('使用者名稱')},
+        'password': {'label': _('密碼')},
+        'is_active': {'label': _('啟用狀態')},
+    }
+    form_extra_fields = {
+        'password': PasswordField(_('密碼'))
+    }
+    # …其餘不變
+
+class DeviceAdmin(ModelView):
+    column_list = ['id', 'user.username', 'device_id', 'verified']
+    column_labels = {
+        'id':            _('編號'),
+        'user.username': _('使用者'),
+        'device_id':     _('裝置 ID'),
+        'verified':      _('已驗證'),
+    }
+    form_args = {
+        'user':      {'label': _('使用者')},
+        'device_id': {'label': _('裝置 ID')},
+        'verified':  {'label': _('已驗證')},
+    }
+    # …其餘不變
+
+
+
 # ── 3. 定義資料模型 ──────────────────────────────────────────────────────
 class User(db.Model):
     __tablename__ = 'users'
