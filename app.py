@@ -90,6 +90,17 @@ def auth_register():
     user = User(username=u, password_hash=generate_password_hash(p))
     db.session.add(user); db.session.commit()
     return jsonify(msg='user created'), 201
+@app.route('/devices', methods=['GET'])
+@jwt_required()
+def list_devices():
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify(error='user not found'), 404
+    return jsonify([
+        {"device_id": d.device_id, "verified": d.verified}
+        for d in user.devices
+    ]), 200
 
 @app.route('/auth/login', methods=['POST'])
 def auth_login():
