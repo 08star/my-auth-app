@@ -32,8 +32,7 @@ class Device(db.Model):
     user_id    = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 # 第一次啟動建立資料表
-@app.before_first_request
-def init_db():
+with app.app_context():
     db.create_all()
 
 # ── 管理介面 (Flask-Admin) ───────────────────────────────────────
