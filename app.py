@@ -20,8 +20,6 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity
 )
 from werkzeug.security import generate_password_hash, check_password_hash
-
-# Flask-Admin
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
 
@@ -40,7 +38,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    devices = db.relationship('Device', backref='user', lazy=True)
+    devices = db.relationship('Device', back_populates='user', lazy=True)
 
 class Device(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -48,6 +46,8 @@ class Device(db.Model):
     device_id = db.Column(db.String(128), nullable=False)
     verified = db.Column(db.Boolean, default=False)
     __table_args__ = (db.UniqueConstraint('user_id', 'device_id', name='uix_user_device'),)
+    # 明確定義 relationship 屬性，讓 Flask-Admin 可見
+    user = db.relationship('User', back_populates='devices')
 
 # 建表
 with app.app_context():
@@ -55,15 +55,15 @@ with app.app_context():
 
 # --- Flask-Admin Setup ---
 admin = Admin(app, name='AdminPanel', template_mode='bootstrap3')
-# 只讀密碼欄，不顯示 hash
+
 class UserAdmin(ModelView):
     column_exclude_list = ['password_hash']
     form_excluded_columns = ['password_hash', 'devices']
 
 class DeviceAdmin(ModelView):
-    column_list = ('id','user.username','device_id','verified')
+    column_list = ('id', 'user.username', 'device_id', 'verified')
     column_labels = {'user.username': 'Username'}
-    form_columns = ['user','device_id','verified']
+    form_columns = ['user', 'device_id', 'verified']
 
 admin.add_view(UserAdmin(User, db.session))
 admin.add_view(DeviceAdmin(Device, db.session))
@@ -121,5 +121,6 @@ def verify_device():
     d.verified=True; db.session.commit()
     return jsonify({'msg':'device verified'}),200
 
+# --- Run server ---
 if __name__=='__main__':
     app.run(host='0.0.0.0', port=8000)
