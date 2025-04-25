@@ -1,10 +1,9 @@
-{# templates/admin/master.html #}
-{% extends 'admin/master.html' %}
+{# templates/admin/custom_master.html #}
+{% extends 'admin/master.html' %}    {# this now refers to the *built-in* one #}
 
 {% block head_css %}
   {{ super() }}
-  <!-- first load the Darkly Bootstrap -->
+  <!-- your darkly CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/darkly.bootstrap.min.css') }}">
-  <!-- then our tweaks -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dark.css') }}">
 {% endblock %}
