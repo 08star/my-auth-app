@@ -1,18 +1,137 @@
 /* static/css/admin-dark.css */
-body, .navbar, .panel, .table, .form-control {
-    background-color: #222 !important;
-    color: #eee    !important;
-  }
-  .navbar, .panel-heading {
-    border-color: #444 !important;
-  }
-  .table>thead>tr>th {
-    border-bottom: 1px solid #444 !important;
-  }
-  a, .navbar-brand, .nav>li>a {
-    color: #ddd !important;
-  }
-  a:hover {
-    color: #fff !important;
-  }
-  
+
+/* 全域背景與文字 */
+body {
+  background-color: #18191A !important;
+  color: #E4E6EB !important;
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Navbar */
+.navbar-inverse {
+  background: linear-gradient(90deg, #242526, #1C1D1E) !important;
+  border-bottom: 2px solid #3A3B3C !important;
+}
+.navbar-inverse .navbar-brand,
+.navbar-inverse .nav > li > a {
+  color: #E4E6EB !important;
+  font-weight: 500;
+}
+.navbar-inverse .nav > li > a:hover,
+.navbar-inverse .navbar-brand:hover {
+  color: #FFFFFF !important;
+}
+
+/* Panel 容器 */
+.panel {
+  background-color: #242526 !important;
+  border: 1px solid #3A3B3C !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+.panel-heading {
+  background: linear-gradient(180deg, #2E2F30, #242526) !important;
+  border-bottom: 1px solid #3A3B3C !important;
+  color: #E4E6EB !important;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* 表格樣式 */
+.table {
+  background: transparent !important;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+.table > thead > tr > th {
+  background-color: #2E2F30 !important;
+  border: none !important;
+  color: #BCC0C4 !important;
+  font-weight: 500;
+  padding: 12px 15px;
+}
+.table > tbody > tr {
+  background-color: #242526 !important;
+  border: none !important;
+  transition: background .2s;
+}
+.table > tbody > tr:hover {
+  background-color: #2C2D2E !important;
+}
+.table > tbody > tr > td {
+  border: none !important;
+  color: #E4E6EB !important;
+  padding: 12px 15px;
+}
+
+/* 條紋效果（可選） */
+.table > tbody > tr:nth-child(odd) {
+  background-color: #1F2021 !important;
+}
+
+/* 連結與圖示 */
+a, .fa {
+  color: #8AB4F8 !important;
+  transition: color .2s;
+}
+a:hover, .fa:hover {
+  color: #B2C7FF !important;
+}
+
+/* 按鈕 */
+.btn-primary {
+  background-color: #3A61C9 !important;
+  border-color: #3554A5 !important;
+  border-radius: 4px !important;
+  padding: 6px 14px !important;
+  font-weight: 500;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background-color: #4B75E2 !important;
+  border-color: #3A61C9 !important;
+}
+.btn-default {
+  background-color: #3A3B3C !important;
+  border-color: #3A3B3C !important;
+  color: #E4E6EB !important;
+}
+.btn-default:hover {
+  background-color: #4A4C4E !important;
+}
+
+/* 表單輸入框 */
+.form-control {
+  background-color: #1F2021 !important;
+  border: 1px solid #3A3B3C !important;
+  border-radius: 4px !important;
+  color: #E4E6EB !important;
+  padding: 8px 12px;
+}
+.form-control:focus {
+  border-color: #8AB4F8 !important;
+  box-shadow: 0 0 4px rgba(138,180,248,0.5) !important;
+  outline: none;
+}
+
+/* 分頁（pagination） */
+.pagination > li > a,
+.pagination > li > span {
+  background-color: #242526 !important;
+  border: 1px solid #3A3B3C !important;
+  color: #E4E6EB !important;
+}
+.pagination > .active > a {
+  background-color: #3A61C9 !important;
+  border-color: #3554A5 !important;
+}
+
+/* 小提示（tooltip） */
+.tooltip-inner {
+  background-color: #3A3B3C !important;
+  color: #E4E6EB !important;
+  border: 1px solid #444 !important;
+}
+
+/* 調整圖示按鈕（例如 Is Active 顯示） */
+.fa-check-circle { color: #4CAF50 !important; }
+.fa-times-circle { color: #F44336 !important; }
