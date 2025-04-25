@@ -31,8 +31,9 @@ class Device(db.Model):
     verified   = db.Column(db.Boolean, default=False, nullable=False)
     user_id    = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-@app.before_serving
-def init_db():
+
+# 模組載入時直接建表
+with app.app_context():
     db.create_all()
 
 
