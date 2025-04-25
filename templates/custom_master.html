@@ -1,5 +1,6 @@
-{# templates/admin/custom_master.html #}
-{% extends 'admin/master.html' %}    {# this now refers to the *built-in* one #}
+{# 繼承官方的 base.html，而非 master.html #}
+{% extends 'admin/base.html' %}
+
 
 {% block head_css %}
   {{ super() }}
