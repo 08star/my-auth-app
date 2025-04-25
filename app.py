@@ -61,10 +61,7 @@ class Device(db.Model):
     verified  = db.Column(db.Boolean, default=False)
     user_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
-# 第一次 request 自動建表
-@app.before_first_request
-def create_tables():
-    db.create_all()
+
 
 # ── 4. 自訂 Admin View ───────────────────────────────────────────────────
 class UserAdmin(ModelView):
@@ -186,5 +183,13 @@ def device_status():
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
 # ── 6. 啟動 ─────────────────────────────────────────────────────────────
-if __name__ == '__main__':
+
+
+ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
+    # 啟動前建立所有資料表
+    with app.app_context():
+        db.create_all()
+
+    app.run(host='0.0.0.0', port=8000)
+
