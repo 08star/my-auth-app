@@ -78,6 +78,13 @@ class SecureModelView(ModelView):
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin_login', next=request.url))
 
+class MyAdminIndexView(AdminIndexView):
+    @expose('/')
+    def index(self):
+        # 若還沒登入，就跳去 /admin/login
+        if not current_user.is_authenticated:
+            return redirect(url_for('admin_login', next=request.url))
+        return super().index()
 # ── 5. 建立 Admin 並掛上 View ────────────────────────────────────────────
 admin = Admin(
     app,
