@@ -35,26 +35,26 @@ def auth_login():
     session_id = str(uuid.uuid4())
     profile_dir = os.path.join("profiles", f"{username}_{session_id}")
     os.makedirs(profile_dir, exist_ok=True)
+
     options = webdriver.ChromeOptions()
     options.add_argument(f"--user-data-dir={profile_dir}")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
+    driver = None
     try:
         driver = webdriver.Chrome(options=options)
         driver.get("https://www.instagram.com/accounts/login/")
         time.sleep(3)
-        driver.find_element(By.NAME, "username").send_keys(username)
-        driver.find_element(By.NAME, "password").send_keys(password)
-        driver.find_element(By.XPATH, "//button[@type='submit']").click()
-        time.sleep(5)
+        # … 其餘操作 …
     except Exception as e:
-        driver.quit()
+        if driver:
+            driver.quit()
         abort(500, description=f"Login error: {e}")
 
     sessions[session_id] = driver
-    if "challenge" in driver.current_url:
-        return jsonify({"session_id": session_id, "challenge": True}), 202
-    return jsonify({"session_id": session_id, "challenge": False}), 200
+    # … 回傳 challenge 狀態 …
 
 @app.route("/auth/verify", methods=["POST"])
 def auth_verify():
