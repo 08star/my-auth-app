@@ -167,15 +167,7 @@ admin.add_view(AdminUserAdmin(AdminUser, db.session, name=_l('後臺帳號')))
 
 
 # ── 5. 建立並註冊 Admin ─────────────────────────────────
-admin = Admin(
-    app,
-    name=_l('管理後臺'),
-    template_mode='bootstrap3',
-    base_template='admin/custom_master.html',
-    translations_path='translations'
-)
-admin.add_view(UserAdmin(User, db.session,   name=_l('使用者'), endpoint='user_admin'))
-admin.add_view(DeviceAdmin(Device, db.session, name=_l('裝置'),   endpoint='device_admin'))
+
 
 # ── 6. 公開 API 路由 ─────────────────────────────────────
 @app.route('/health', methods=['GET'])
