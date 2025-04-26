@@ -1,16 +1,24 @@
 import os
-from flask import Flask, request, jsonify
+from flask import (
+    Flask, request, jsonify,
+    redirect, url_for, flash, render_template
+)
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import (
     JWTManager, create_access_token,
     jwt_required, get_jwt_identity
 )
 from flask_babel import Babel, lazy_gettext as _l
-from flask_admin import Admin
+from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
 from wtforms import PasswordField
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import redirect, url_for, flash, render_template
+from flask_login import (
+    LoginManager, UserMixin,
+    login_user, logout_user,
+    login_required, current_user
+)
+
 # ── 1. 建立 Flask 應用與設定 ───────────────────────────────
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get(
@@ -26,6 +34,9 @@ app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
 db    = SQLAlchemy(app)
 jwt   = JWTManager(app)
 babel = Babel(app)
+
+login_manager = LoginManager(app)
+login_manager.login_view = 'admin_login'
 
 # ── 3. 定義資料模型 ───────────────────────────────────────
 class User(db.Model):
@@ -44,10 +55,37 @@ class Device(db.Model):
     user_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user      = db.relationship('User', back_populates='devices')
 
+class AdminUser(UserMixin, db.Model):
+    __tablename__ = 'admin_users'
+    id            = db.Column(db.Integer, primary_key=True)
+    username      = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    is_active     = db.Column(db.Boolean, default=True)
 
+    def check_password(self, pw):
+        return check_password_hash(self.password_hash, pw)
 
-# ── 4. 自訂 Admin View ───────────────────────────────────
-class UserAdmin(ModelView):
+@login_manager.user_loader
+def load_admin(uid):
+    return AdminUser.query.get(int(uid))
+
+# ── 4. 自訂保護用的 ModelView & IndexView ─────────────────────
+class SecureModelView(ModelView):
+    def is_accessible(self):
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('admin_login'))
+
+class SecureAdminIndexView(AdminIndexView):
+    def is_accessible(self):
+        return current_user.is_authenticated
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('admin_login'))
+
+# ── 5. 定義三個後臺面板 ────────────────────────────────────
+class UserAdmin(SecureModelView):
     column_list  = ['id', 'username', 'is_active']
     column_labels = {
         'id':        _l('編號'),
@@ -70,13 +108,13 @@ class UserAdmin(ModelView):
     can_delete            = False
 
     def on_model_change(self, form, model, is_created):
-        if hasattr(form, 'password') and form.password.data:
+        if form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
         elif is_created:
             raise ValueError(_l("建立用戶需要密碼"))
         return super().on_model_change(form, model, is_created)
 
-class DeviceAdmin(ModelView):
+class DeviceAdmin(SecureModelView):
     column_list  = ['id', 'user.username', 'device_id', 'verified']
     column_labels = {
         'id':            _l('編號'),
@@ -94,40 +132,46 @@ class DeviceAdmin(ModelView):
     can_create           = False
     can_edit             = True
     can_delete           = False
-# ── 5. 管理員管理 ─────────────────────────────────
-# ── 在你原本的 User, Device 之後，加入 AdminUser ───────────────────
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
-class AdminUser(UserMixin, db.Model):
-    __tablename__ = 'admin_users'
-    id            = db.Column(db.Integer, primary_key=True)
-    username      = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    is_active     = db.Column(db.Boolean, default=True)
+class AdminUserAdmin(SecureModelView):
+    column_list  = ['id', 'username', 'is_active']
+    form_extra_fields = {'password': PasswordField(_l('密碼'))}
+    form_excluded_columns = ['password_hash']
+    can_create = True
+    can_edit   = True
+    can_delete = False
 
-    def check_password(self, pw):
-        return check_password_hash(self.password_hash, pw)
+    def on_model_change(self, form, model, is_created):
+        if form.password.data:
+            model.password_hash = generate_password_hash(form.password.data)
+        elif is_created:
+            raise ValueError(_l("建立管理員需要密碼"))
+        return super().on_model_change(form, model, is_created)
 
-# ── 在擴充套件初始化區，加入 LoginManager ───────────────────────────
-login_manager = LoginManager(app)
-login_manager.login_view = 'admin_login'
+# ── 6. 建立並註冊 Admin ─────────────────────────────────────
+admin = Admin(
+    app,
+    name=_l('管理後臺'),
+    index_view=SecureAdminIndexView(),
+    template_mode='bootstrap3',
+    base_template='admin/custom_master.html',
+    translations_path='translations'
+)
+admin.add_view(UserAdmin(User,         db.session, name=_l('使用者'),   endpoint='user_admin'))
+admin.add_view(DeviceAdmin(Device,     db.session, name=_l('裝置'),     endpoint='device_admin'))
+admin.add_view(AdminUserAdmin(AdminUser, db.session, name=_l('後臺帳號'), endpoint='admin_user'))
 
-@login_manager.user_loader
-def load_admin(uid):
-    return AdminUser.query.get(int(uid))
-
-# ── 在 @app.route 之後，加入這兩個路由 ────────────────────────────────
+# ── 7. 管理員登入／登出路由 ───────────────────────────────────
 @app.route('/admin/login', methods=['GET','POST'])
 def admin_login():
-    if request.method=='POST':
-        u = request.form['username']
-        p = request.form['password']
+    if request.method == 'POST':
+        u = request.form.get('username')
+        p = request.form.get('password')
         adm = AdminUser.query.filter_by(username=u).first()
         if adm and adm.is_active and adm.check_password(p):
             login_user(adm)
             return redirect(url_for('admin.index'))
-        else:
-            flash('帳號或密碼錯誤','danger')
+        flash(_l('帳號或密碼錯誤'), 'danger')
     return render_template('admin_login.html')
 
 @app.route('/admin/logout')
@@ -136,40 +180,7 @@ def admin_logout():
     logout_user()
     return redirect(url_for('admin_login'))
 
-# ── 替換原本 Admin 初始化，使用保護版 IndexView ───────────────────
-from flask_admin import AdminIndexView
-
-class ModelView(ModelView):
-    def is_accessible(self):
-        return current_user.is_authenticated
-    def inaccessible_callback(self, name, **kwargs):
-        return redirect(url_for('admin_login'))
-
-class SecureAdminIndexView(AdminIndexView):
-    def is_accessible(self):
-        return current_user.is_authenticated
-    def inaccessible_callback(self, name, **kwargs):
-        return redirect(url_for('admin_login'))
-
-
-# ── 最後加上管理員帳號管理面板 ────────────────────────────────────
-class AdminUserAdmin(ModelView):
-    column_list  = ['id','username','is_active']
-    form_extra_fields = {'password': PasswordField(_l('密碼'))}
-    form_excluded_columns = ['password_hash']
-    def on_model_change(self, form, model, is_created):
-        if form.password.data:
-            model.password_hash = generate_password_hash(form.password.data)
-
-admin.add_view(UserAdmin(User,   db.session, name=_l('使用者'),   endpoint='user_admin'))
-admin.add_view(DeviceAdmin(Device, db.session, name=_l('裝置'),    endpoint='device_admin'))
-admin.add_view(AdminUserAdmin(AdminUser, db.session, name=_l('後臺帳號')))
-
-
-# ── 5. 建立並註冊 Admin ─────────────────────────────────
-
-
-# ── 6. 公開 API 路由 ─────────────────────────────────────
+# ── 8. 公開 API 路由 ─────────────────────────────────────
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify(status='ok')
@@ -244,11 +255,8 @@ def device_status():
         return jsonify(error=_l('設備未綁定')), 404
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
-# ── 7. 啟動 ─────────────────────────────────────────────────
+# ── 9. 啟動 ─────────────────────────────────────────────────
 if __name__ == '__main__':
-    # 啟動前建表（適用所有 Flask 版本）
     with app.app_context():
         db.create_all()
-
     app.run(host='0.0.0.0', port=8000)
-
