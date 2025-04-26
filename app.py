@@ -47,7 +47,7 @@ class Device(db.Model):
 
 
 # ── 4. 自訂 Admin View ───────────────────────────────────
-class UserAdmin(SecureModelView):
+class UserAdmin(ModelView):
     column_list  = ['id', 'username', 'is_active']
     column_labels = {
         'id':        _l('編號'),
@@ -76,7 +76,7 @@ class UserAdmin(SecureModelView):
             raise ValueError(_l("建立用戶需要密碼"))
         return super().on_model_change(form, model, is_created)
 
-class DeviceAdmin(SecureModelView):
+class DeviceAdmin(ModelView):
     column_list  = ['id', 'user.username', 'device_id', 'verified']
     column_labels = {
         'id':            _l('編號'),
@@ -139,7 +139,7 @@ def admin_logout():
 # ── 替換原本 Admin 初始化，使用保護版 IndexView ───────────────────
 from flask_admin import AdminIndexView
 
-class SecureModelView(ModelView):
+class ModelView(ModelView):
     def is_accessible(self):
         return current_user.is_authenticated
     def inaccessible_callback(self, name, **kwargs):
@@ -153,7 +153,7 @@ class SecureAdminIndexView(AdminIndexView):
 
 
 # ── 最後加上管理員帳號管理面板 ────────────────────────────────────
-class AdminUserAdmin(SecureModelView):
+class AdminUserAdmin(ModelView):
     column_list  = ['id','username','is_active']
     form_extra_fields = {'password': PasswordField(_l('密碼'))}
     form_excluded_columns = ['password_hash']
