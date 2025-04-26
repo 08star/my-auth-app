@@ -255,6 +255,19 @@ def device_status():
         return jsonify(error=_l('設備未綁定')), 404
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
+
+with app.app_context():
+    db.create_all()
+    if AdminUser.query.count() == 0:
+        from werkzeug.security import generate_password_hash
+        admin = AdminUser(
+            username='admin',
+            password_hash=generate_password_hash('0905')
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print('已自動建立預設管理員：admin')
+
 # ── 9. 啟動 ─────────────────────────────────────────────────
 if __name__ == '__main__':
     with app.app_context():
