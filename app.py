@@ -69,6 +69,7 @@ class AdminUser(UserMixin, db.Model):
 def load_admin(uid):
     return AdminUser.query.get(int(uid))
 
+
 # ── 4. 自訂保護用的 ModelView & IndexView ─────────────────────
 class SecureModelView(ModelView):
     def is_accessible(self):
@@ -83,6 +84,7 @@ class SecureAdminIndexView(AdminIndexView):
 
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin_login'))
+
 
 # ── 5. 定義三個後臺面板 ────────────────────────────────────
 class UserAdmin(SecureModelView):
@@ -135,7 +137,7 @@ class DeviceAdmin(SecureModelView):
 
 class AdminUserAdmin(SecureModelView):
     column_list  = ['id', 'username', 'is_active']
-    form_extra_fields = {'password': PasswordField(_l('密碼'))}
+    form_extra_fields    = {'password': PasswordField(_l('密碼'))}
     form_excluded_columns = ['password_hash']
     can_create = True
     can_edit   = True
@@ -148,6 +150,7 @@ class AdminUserAdmin(SecureModelView):
             raise ValueError(_l("建立管理員需要密碼"))
         return super().on_model_change(form, model, is_created)
 
+
 # ── 6. 建立並註冊 Admin ─────────────────────────────────────
 admin = Admin(
     app,
@@ -157,9 +160,10 @@ admin = Admin(
     base_template='admin/custom_master.html',
     translations_path='translations'
 )
-admin.add_view(UserAdmin(User,         db.session, name=_l('使用者'),   endpoint='user_admin'))
-admin.add_view(DeviceAdmin(Device,     db.session, name=_l('裝置'),     endpoint='device_admin'))
+admin.add_view(UserAdmin(User,           db.session, name=_l('使用者'),   endpoint='user_admin'))
+admin.add_view(DeviceAdmin(Device,       db.session, name=_l('裝置'),     endpoint='device_admin'))
 admin.add_view(AdminUserAdmin(AdminUser, db.session, name=_l('後臺帳號'), endpoint='admin_user'))
+
 
 # ── 7. 管理員登入／登出路由 ───────────────────────────────────
 @app.route('/admin/login', methods=['GET','POST'])
@@ -180,6 +184,7 @@ def admin_logout():
     logout_user()
     return redirect(url_for('admin_login'))
 
+
 # ── 8. 公開 API 路由 ─────────────────────────────────────
 @app.route('/health', methods=['GET'])
 def health():
@@ -194,7 +199,8 @@ def auth_register():
     if User.query.filter_by(username=u).first():
         return jsonify(error=_l('使用者名稱已存在')), 409
     user = User(username=u, password_hash=generate_password_hash(p))
-    db.session.add(user); db.session.commit()
+    db.session.add(user)
+    db.session.commit()
     return jsonify(msg=_l('使用者創建')), 201
 
 @app.route('/auth/login', methods=['POST'])
@@ -237,7 +243,8 @@ def device_bind():
     dev = Device.query.filter_by(user=user, device_id=dev_id).first()
     if not dev:
         dev = Device(user=user, device_id=dev_id, verified=False)
-        db.session.add(dev); db.session.commit()
+        db.session.add(dev)
+        db.session.commit()
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
 @app.route('/devices/status', methods=['GET'])
@@ -256,20 +263,18 @@ def device_status():
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
 
-with app.app_context():
-    db.create_all()
-    if AdminUser.query.count() == 0:
-        from werkzeug.security import generate_password_hash
-        admin = AdminUser(
-            username='admin',
-            password_hash=generate_password_hash('0905')
-        )
-        db.session.add(admin)
-        db.session.commit()
-        print('已自動建立預設管理員：admin')
-
-# ── 9. 啟動 ─────────────────────────────────────────────────
+# ── 9. 啟動 & 自動建立預設管理員 ───────────────────────────────
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        # 如果尚無任何管理員，則自動建立一組
+        if AdminUser.query.count() == 0:
+            admin = AdminUser(
+                username='admin',
+                password_hash=generate_password_hash('0905'),
+                is_active=True
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print('已自動建立預設管理員：admin / 0905')
     app.run(host='0.0.0.0', port=8000)
