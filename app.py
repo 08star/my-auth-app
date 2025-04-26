@@ -10,7 +10,7 @@ from flask_admin import Admin
 from flask_admin.contrib.sqla import SecureModelView
 from wtforms import PasswordField
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from flask import redirect, url_for, flash, render_template
 # ── 1. 建立 Flask 應用與設定 ───────────────────────────────
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get(
@@ -139,7 +139,7 @@ def admin_logout():
 # ── 替換原本 Admin 初始化，使用保護版 IndexView ───────────────────
 from flask_admin import AdminIndexView
 
-class SecureModelView(SecureModelView):
+class SecureModelView(ModelView):
     def is_accessible(self):
         return current_user.is_authenticated
     def inaccessible_callback(self, name, **kwargs):
