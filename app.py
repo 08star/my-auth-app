@@ -7,7 +7,7 @@ from flask_jwt_extended import (
 )
 from flask_babel import Babel, lazy_gettext as _l
 from flask_admin import Admin
-from flask_admin.contrib.sqla import SecureModelView
+from flask_admin.contrib.sqla import ModelView
 from wtforms import PasswordField
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import redirect, url_for, flash, render_template
