@@ -1,5 +1,4 @@
 import os
-from wtforms.fields.core import UnboundField
 from flask import (
     Flask, request, jsonify,
     redirect, url_for, flash, render_template
@@ -56,24 +55,24 @@ class Device(db.Model):
     user_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user      = db.relationship('User', back_populates='devices')
 
- class AdminUser(UserMixin, db.Model):
-     __tablename__ = 'admin_users'
-     id            = db.Column(db.Integer, primary_key=True)
-     username      = db.Column(db.String(80), unique=True, nullable=False)
-     password_hash = db.Column(db.String(128), nullable=False)
-     is_active     = db.Column(db.Boolean, default=True)
+class AdminUser(UserMixin, db.Model):
+    __tablename__ = 'admin_users'
+    id            = db.Column(db.Integer, primary_key=True)
+    username      = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    is_active     = db.Column(db.Boolean, default=True)
 
     # 這兩行讓表單能對應到 password 欄位
-     _password = None
-     @property
-     def password(self):
-         return self._password
-     @password.setter
-     def password(self, value):
-         self._password = value
+    _password = None
+    @property
+    def password(self):
+        return self._password
+    @password.setter
+    def password(self, value):
+        self._password = value
 
-     def check_password(self, pw):
-         return check_password_hash(self.password_hash, pw)
+    def check_password(self, pw):
+        return check_password_hash(self.password_hash, pw)
 
 
 @login_manager.user_loader
@@ -111,9 +110,6 @@ class UserAdmin(SecureModelView):
         'password': {'label': _l('密碼')},
         'is_active': {'label': _l('啟用狀態')},
     }
-    form_extra_fields = {
-        'password': UnboundField(PasswordField, label=_l('密碼'))
-    }
     form_excluded_columns = ['password_hash', 'devices']
     column_editable_list  = ['is_active']
     can_create            = True
@@ -149,20 +145,17 @@ class DeviceAdmin(SecureModelView):
 from wtforms import PasswordField
 
 class AdminUserAdmin(SecureModelView):
-    # 列表顯示 id, username, is_active，可 inline 編輯 is_active
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
 
-    # 表單只用這三個欄位
+    # 只列出真正的 model 欄位
     form_columns          = ['username', 'password', 'is_active']
     form_excluded_columns = ['password_hash']
 
-    # 用 form_overrides 注入 WTForms 的 PasswordField
+    # 這裡注入 WTForms 的 PasswordField
     form_overrides = {
         'password': PasswordField
     }
-
-    # 改 label
     form_args = {
         'username':  {'label': _l('帳號')},
         'password':  {'label': _l('密碼')},
@@ -174,13 +167,12 @@ class AdminUserAdmin(SecureModelView):
     can_delete = False
 
     def on_model_change(self, form, model, is_created):
-        # 新增時強制填密碼
         if is_created and not form.password.data:
             raise ValueError(_l("建立管理員需要密碼"))
-        # 只要填了密碼就更新 hash
         if form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
         return super().on_model_change(form, model, is_created)
+
 
 
 # ── 6. 建立並註冊 Admin ─────────────────────────────────────
