@@ -158,12 +158,12 @@ class AdminUserAdmin(SecureModelView):
     can_create = True
     can_edit   = True
     can_delete = False
-
     def on_model_change(self, form, model, is_created):
-        # 如果填了新密碼，就重新雜湊；若是新建立且沒填，就報錯
-        if form.password.data:
+        # 只有當表單有 password 欄位且填了資料，才更新雜湊
+        if hasattr(form, 'password') and form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
-        elif is_created:
+        # 建立新管理員時，若表單有 password 欄位但沒填，就報錯
+        elif is_created and hasattr(form, 'password') and not form.password.data:
             raise ValueError(_l("建立管理員需要密碼"))
         return super().on_model_change(form, model, is_created)
 
