@@ -136,34 +136,36 @@ class DeviceAdmin(SecureModelView):
     can_edit             = True
     can_delete           = False
 
+from wtforms import PasswordField
+
 class AdminUserAdmin(SecureModelView):
     # 列表顯示 id、帳號、啟用狀態，且可在列表直接切換啟用狀態
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
 
-    # 表單顯示：帳號、密碼、啟用狀態
-    form_columns = ['username', 'password', 'is_active']
-    form_args = {
-        'username':  {'label': _l('帳號')},
-        'password':  {'label': _l('密碼')},
-        'is_active': {'label': _l('啟用狀態')}
-    }
+    # 表單預設只顯示帳號與啟用狀態，密碼欄位透過覆寫方法動態加入
+    form_columns           = ['username', 'is_active']
+    form_excluded_columns  = ['password_hash']
+    can_create             = True
+    can_edit               = True
+    can_delete             = False
 
-    # 密碼欄位要用 UnboundField 包裝
-    form_extra_fields     = {
-        'password': UnboundField(PasswordField, label=_l('密碼'))
-    }
-    form_excluded_columns = ['password_hash']
+    def create_form(self):
+        form = super().create_form()
+        form.password = PasswordField(_l('密碼'))  # 建立新帳號時必填
+        return form
 
-    can_create = True
-    can_edit   = True
-    can_delete = False
+    def edit_form(self, obj=None):
+        form = super().edit_form(obj)
+        form.password = PasswordField(_l('新密碼（留空則不變更）'))
+        return form
+
     def on_model_change(self, form, model, is_created):
-        # 只有當表單有 password 欄位且填了資料，才更新雜湊
+        # 只有填了 password 才更新 hash
         if hasattr(form, 'password') and form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
-        # 建立新管理員時，若表單有 password 欄位但沒填，就報錯
-        elif is_created and hasattr(form, 'password') and not form.password.data:
+        # 新增時如果沒填 password，要報錯
+        elif is_created:
             raise ValueError(_l("建立管理員需要密碼"))
         return super().on_model_change(form, model, is_created)
 
