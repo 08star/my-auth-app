@@ -151,34 +151,44 @@ class DeviceAdmin(SecureModelView):
 from wtforms import PasswordField
 
 class AdminUserAdmin(SecureModelView):
+    # 列表視圖：顯示 id、username、is_active，並允許 inline 編輯 is_active
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
-
-    # 只列出真正的 model 欄位
-    form_columns          = ['username', 'password', 'is_active']
-    form_excluded_columns = ['password_hash']
-
-    # 這裡注入 WTForms 的 PasswordField
-    form_overrides = {
-        'password': PasswordField
+    column_labels = {
+        'id':        _l('編號'),
+        'username':  _l('帳號'),
+        'is_active': _l('啟用狀態'),
     }
+
+    # 表單只綁定 model 欄位
+    form_columns          = ['username', 'is_active']
+    form_excluded_columns = ['password_hash']
     form_args = {
         'username':  {'label': _l('帳號')},
-        'password':  {'label': _l('密碼')},
         'is_active': {'label': _l('啟用狀態')},
+    }
+
+    # 加個純表單用的密碼欄位
+    form_extra_fields = {
+        'password': PasswordField(_l('密碼'))
     }
 
     can_create = True
     can_edit   = True
     can_delete = False
 
+    def on_form_prefill(self, form, id):
+        # 編輯時把密碼欄位標籤改為「新密碼（留空不變更）」
+        form.password.label.text = _l('新密碼（留空不變更）')
+
     def on_model_change(self, form, model, is_created):
+        # 建立時：必填密碼
         if is_created and not form.password.data:
             raise ValueError(_l("建立管理員需要密碼"))
+        # 只要有輸入密碼，就更新 password_hash
         if form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
         return super().on_model_change(form, model, is_created)
-
 
 
 # ── 6. 建立並註冊 Admin ─────────────────────────────────────
