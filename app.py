@@ -63,8 +63,18 @@ class AdminUser(UserMixin, db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     is_active     = db.Column(db.Boolean, default=True)
 
+    # 新增下面兩行：供表單綁定用
+    _password = None
+    @property
+    def password(self):
+        return self._password
+    @password.setter
+    def password(self, value):
+        self._password = value
+
     def check_password(self, pw):
         return check_password_hash(self.password_hash, pw)
+
 
 @login_manager.user_loader
 def load_admin(uid):
@@ -136,25 +146,21 @@ class DeviceAdmin(SecureModelView):
     can_edit             = True
     can_delete           = False
 
-# 在檔案頂端，加入：
-from flask_admin.form import PasswordField as AdminPasswordField
+from wtforms import PasswordField
 
 class AdminUserAdmin(SecureModelView):
-    # 列表：顯示 id、username、is_active，可 inline 切換 is_active
+    # 列表顯示
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
 
-    # 表單：只允許編輯這三個欄位
+    # 表單只要 這三個 欄位
     form_columns          = ['username', 'password', 'is_active']
     form_excluded_columns = ['password_hash']
+    form_overrides        = {'password': PasswordField}
     form_args = {
         'username':  {'label': _l('帳號')},
         'password':  {'label': _l('密碼')},
         'is_active': {'label': _l('啟用狀態')},
-    }
-    # 用 Flask-Admin 的 PasswordField
-    form_extra_fields = {
-        'password': AdminPasswordField(_l('密碼'))
     }
 
     can_create = True
@@ -162,15 +168,14 @@ class AdminUserAdmin(SecureModelView):
     can_delete = False
 
     def on_model_change(self, form, model, is_created):
-        # 新增時一定要填密碼
-        if is_created:
-            if not form.password.data:
-                raise ValueError(_l("建立管理員需要密碼"))
-            model.password_hash = generate_password_hash(form.password.data)
-        # 編輯時，有填就更新，沒填就保留舊密碼
-        elif form.password.data:
+        # 新增：密碼必填
+        if is_created and not form.password.data:
+            raise ValueError(_l("建立管理員需要密碼"))
+        # 只要填了密碼就更新 hash
+        if form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
         return super().on_model_change(form, model, is_created)
+
 
 # ── 6. 建立並註冊 Admin ─────────────────────────────────────
 admin = Admin(
