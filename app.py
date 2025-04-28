@@ -136,14 +136,15 @@ class DeviceAdmin(SecureModelView):
     can_edit             = True
     can_delete           = False
 
-from wtforms import PasswordField
+# 在檔案頂端，加入：
+from flask_admin.form import PasswordField as AdminPasswordField
 
 class AdminUserAdmin(SecureModelView):
-    # 列表：顯示 id、帳號、啟用狀態，可 inline 切換 is_active
+    # 列表：顯示 id、username、is_active，可 inline 切換 is_active
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
 
-    # 表單：只顯示 username, password, is_active
+    # 表單：只允許編輯這三個欄位
     form_columns          = ['username', 'password', 'is_active']
     form_excluded_columns = ['password_hash']
     form_args = {
@@ -151,9 +152,9 @@ class AdminUserAdmin(SecureModelView):
         'password':  {'label': _l('密碼')},
         'is_active': {'label': _l('啟用狀態')},
     }
-    # 直接用 PasswordField 類別作為 extra field
+    # 用 Flask-Admin 的 PasswordField
     form_extra_fields = {
-        'password': PasswordField()
+        'password': AdminPasswordField(_l('密碼'))
     }
 
     can_create = True
@@ -161,17 +162,15 @@ class AdminUserAdmin(SecureModelView):
     can_delete = False
 
     def on_model_change(self, form, model, is_created):
-        # 新增時：密碼必填
+        # 新增時一定要填密碼
         if is_created:
             if not form.password.data:
                 raise ValueError(_l("建立管理員需要密碼"))
             model.password_hash = generate_password_hash(form.password.data)
-        # 編輯時：只要有填密碼就更新
+        # 編輯時，有填就更新，沒填就保留舊密碼
         elif form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
         return super().on_model_change(form, model, is_created)
-
-
 
 # ── 6. 建立並註冊 Admin ─────────────────────────────────────
 admin = Admin(
