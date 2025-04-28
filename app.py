@@ -137,21 +137,36 @@ class DeviceAdmin(SecureModelView):
     can_delete           = False
 
 class AdminUserAdmin(SecureModelView):
-    column_list            = ['id', 'username', 'is_active']
-    form_extra_fields      = {
+    # 列表顯示 id、帳號、啟用狀態，且可在列表直接切換啟用狀態
+    column_list          = ['id', 'username', 'is_active']
+    column_editable_list = ['is_active']
+
+    # 表單顯示：帳號、密碼、啟用狀態
+    form_columns = ['username', 'password', 'is_active']
+    form_args = {
+        'username':  {'label': _l('帳號')},
+        'password':  {'label': _l('密碼')},
+        'is_active': {'label': _l('啟用狀態')}
+    }
+
+    # 密碼欄位要用 UnboundField 包裝
+    form_extra_fields     = {
         'password': UnboundField(PasswordField, label=_l('密碼'))
     }
-    form_excluded_columns  = ['password_hash']
-    can_create             = True
-    can_edit               = True
-    can_delete             = False
+    form_excluded_columns = ['password_hash']
+
+    can_create = True
+    can_edit   = True
+    can_delete = False
 
     def on_model_change(self, form, model, is_created):
+        # 如果填了新密碼，就重新雜湊；若是新建立且沒填，就報錯
         if form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
         elif is_created:
             raise ValueError(_l("建立管理員需要密碼"))
         return super().on_model_change(form, model, is_created)
+
 
 
 # ── 6. 建立並註冊 Admin ─────────────────────────────────────
