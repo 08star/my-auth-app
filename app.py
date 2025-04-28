@@ -99,11 +99,11 @@ class SecureAdminIndexView(AdminIndexView):
 # ── 5. 定義三個後臺面板 ────────────────────────────────────
 class UserAdmin(SecureModelView):
     # 列表要顯示的欄位：id、username、is_active
-    column_list = ['id', 'username', 'is_active']
+    column_list          = ['id', 'username', 'is_active']
     # 允許在列表中直接切換 is_active
     column_editable_list = ['is_active']
 
-    # 列表欄位對應中文標籤
+    # 欄位標籤
     column_labels = {
         'id':        _l('編號'),
         'username':  _l('使用者名稱'),
@@ -111,21 +111,21 @@ class UserAdmin(SecureModelView):
     }
 
     # 表單要顯示的欄位：username、is_active
-    form_columns = ['username', 'is_active']
+    form_columns          = ['username', 'is_active']
     form_args = {
         'username':  {'label': _l('使用者名稱')},
         'is_active': {'label': _l('啟用狀態')},
     }
-    # 排除在表單中出現的資料庫欄位
+    # 排除不需要在表單中顯示的欄位
     form_excluded_columns = ['password_hash', 'devices']
 
-    # 新增／編輯／刪除權限
+    # 權限
     can_create = True
     can_edit   = True
     can_delete = False
 
     def on_model_change(self, form, model, is_created):
-        # 這裡不需要處理密碼，僅確保其他邏輯正常
+        # 這裡不再處理密碼，僅保留原有邏輯
         return super().on_model_change(form, model, is_created)
 
 
