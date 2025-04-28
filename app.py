@@ -1,5 +1,5 @@
 import os
-from wtforms.form import UnboundField
+from wtforms.fields.core import UnboundField
 from flask import (
     Flask, request, jsonify,
     redirect, url_for, flash, render_template
