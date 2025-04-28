@@ -12,6 +12,7 @@ from flask_babel import Babel, lazy_gettext as _l
 from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
 from wtforms import PasswordField
+from wtforms.form import UnboundField
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import (
     LoginManager, UserMixin,
@@ -69,7 +70,6 @@ class AdminUser(UserMixin, db.Model):
 def load_admin(uid):
     return AdminUser.query.get(int(uid))
 
-
 # ── 4. 自訂保護用的 ModelView & IndexView ─────────────────────
 class SecureModelView(ModelView):
     def is_accessible(self):
@@ -84,7 +84,6 @@ class SecureAdminIndexView(AdminIndexView):
 
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin_login'))
-
 
 # ── 5. 定義三個後臺面板 ────────────────────────────────────
 class UserAdmin(SecureModelView):
@@ -101,7 +100,7 @@ class UserAdmin(SecureModelView):
         'is_active': {'label': _l('啟用狀態')},
     }
     form_extra_fields = {
-        'password': PasswordField(_l('密碼'))
+        'password': UnboundField(PasswordField, label=_l('密碼'))
     }
     form_excluded_columns = ['password_hash', 'devices']
     column_editable_list  = ['is_active']
@@ -137,7 +136,14 @@ class DeviceAdmin(SecureModelView):
 
 class AdminUserAdmin(SecureModelView):
     column_list  = ['id', 'username', 'is_active']
-    form_extra_fields    = {'password': PasswordField(_l('密碼'))}
+    form_args = {
+        'username': {'label': _l('帳號')},
+        'password': {'label': _l('密碼')},
+        'is_active': {'label': _l('啟用狀態')},
+    }
+    form_extra_fields    = {
+        'password': UnboundField(PasswordField, label=_l('密碼'))
+    }
     form_excluded_columns = ['password_hash']
     can_create = True
     can_edit   = True
@@ -149,7 +155,6 @@ class AdminUserAdmin(SecureModelView):
         elif is_created:
             raise ValueError(_l("建立管理員需要密碼"))
         return super().on_model_change(form, model, is_created)
-
 
 # ── 6. 建立並註冊 Admin ─────────────────────────────────────
 admin = Admin(
@@ -163,7 +168,6 @@ admin = Admin(
 admin.add_view(UserAdmin(User,           db.session, name=_l('使用者'),   endpoint='user_admin'))
 admin.add_view(DeviceAdmin(Device,       db.session, name=_l('裝置'),     endpoint='device_admin'))
 admin.add_view(AdminUserAdmin(AdminUser, db.session, name=_l('後臺帳號'), endpoint='admin_user'))
-
 
 # ── 7. 管理員登入／登出路由 ───────────────────────────────────
 @app.route('/admin/login', methods=['GET','POST'])
@@ -183,7 +187,6 @@ def admin_login():
 def admin_logout():
     logout_user()
     return redirect(url_for('admin_login'))
-
 
 # ── 8. 公開 API 路由 ─────────────────────────────────────
 @app.route('/health', methods=['GET'])
@@ -262,12 +265,10 @@ def device_status():
         return jsonify(error=_l('設備未綁定')), 404
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
-
 # ── 9. 啟動 & 自動建立預設管理員 ───────────────────────────────
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        # 如果尚無任何管理員，則自動建立一組
         if AdminUser.query.count() == 0:
             admin = AdminUser(
                 username='admin',
