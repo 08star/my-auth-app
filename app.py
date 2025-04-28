@@ -139,33 +139,38 @@ class DeviceAdmin(SecureModelView):
 from wtforms import PasswordField
 
 class AdminUserAdmin(SecureModelView):
-    # 列表顯示 id、username、is_active，可 inline 切換 is_active
+    # 列表：顯示 id、帳號、啟用狀態，可 inline 切換 is_active
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
 
-    # 後臺帳號管理：不顯示 password_hash 欄位
+    # 表單：只顯示 username, password, is_active
+    form_columns          = ['username', 'password', 'is_active']
     form_excluded_columns = ['password_hash']
+    form_args = {
+        'username':  {'label': _l('帳號')},
+        'password':  {'label': _l('密碼')},
+        'is_active': {'label': _l('啟用狀態')},
+    }
+    # 直接用 PasswordField 類別作為 extra field
+    form_extra_fields = {
+        'password': PasswordField()
+    }
 
     can_create = True
     can_edit   = True
     can_delete = False
 
-    def create_form(self):
-        # 新增時的表單，在自動產生欄位上再加一個“密碼”欄位
-        form = super().create_form()
-        form.password = PasswordField(_l('密碼'))
-        return form
-
     def on_model_change(self, form, model, is_created):
-        # 新增時必填密碼
+        # 新增時：密碼必填
         if is_created:
-            if not hasattr(form, 'password') or not form.password.data:
+            if not form.password.data:
                 raise ValueError(_l("建立管理員需要密碼"))
             model.password_hash = generate_password_hash(form.password.data)
-        # 編輯時若意外帶了 password 欄位且有值，就更新雜湊
-        elif hasattr(form, 'password') and form.password.data:
+        # 編輯時：只要有填密碼就更新
+        elif form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
         return super().on_model_change(form, model, is_created)
+
 
 
 # ── 6. 建立並註冊 Admin ─────────────────────────────────────
