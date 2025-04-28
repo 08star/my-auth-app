@@ -138,33 +138,34 @@ class DeviceAdmin(SecureModelView):
 
 from wtforms import PasswordField
 
+from wtforms import PasswordField
+
 class AdminUserAdmin(SecureModelView):
-    # 列表顯示 id、帳號、啟用狀態，且可在列表直接切換啟用狀態
+    # 列表顯示 id、帳號、啟用狀態，且可 inline 切換啟用狀態
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
 
-    # 表單預設只顯示帳號與啟用狀態，密碼欄位透過覆寫方法動態加入
-    form_columns           = ['username', 'is_active']
-    form_excluded_columns  = ['password_hash']
-    can_create             = True
-    can_edit               = True
-    can_delete             = False
+    can_create = True
+    can_edit   = True
+    can_delete = False
 
     def create_form(self):
+        # 新增時表單：加上密碼 (必填)
         form = super().create_form()
-        form.password = PasswordField(_l('密碼'))  # 建立新帳號時必填
+        form.password = PasswordField(_l('密碼'))
         return form
 
     def edit_form(self, obj=None):
+        # 編輯時表單：加上「新密碼」欄位（留空則不變更）
         form = super().edit_form(obj)
-        form.password = PasswordField(_l('新密碼（留空則不變更）'))
+        form.password = PasswordField(_l('新密碼（留空不變更）'))
         return form
 
     def on_model_change(self, form, model, is_created):
         # 只有填了 password 才更新 hash
         if hasattr(form, 'password') and form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
-        # 新增時如果沒填 password，要報錯
+        # 新增時若沒填 password，要報錯
         elif is_created:
             raise ValueError(_l("建立管理員需要密碼"))
         return super().on_model_change(form, model, is_created)
