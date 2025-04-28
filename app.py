@@ -98,30 +98,36 @@ class SecureAdminIndexView(AdminIndexView):
 
 # ── 5. 定義三個後臺面板 ────────────────────────────────────
 class UserAdmin(SecureModelView):
-    column_list  = ['id', 'username', 'is_active']
+    # 列表要顯示的欄位：id、username、is_active
+    column_list = ['id', 'username', 'is_active']
+    # 允許在列表中直接切換 is_active
+    column_editable_list = ['is_active']
+
+    # 列表欄位對應中文標籤
     column_labels = {
         'id':        _l('編號'),
         'username':  _l('使用者名稱'),
         'is_active': _l('啟用狀態'),
     }
-    form_columns = ['username', 'password', 'is_active']
+
+    # 表單要顯示的欄位：username、is_active
+    form_columns = ['username', 'is_active']
     form_args = {
-        'username': {'label': _l('使用者名稱')},
-        'password': {'label': _l('密碼')},
+        'username':  {'label': _l('使用者名稱')},
         'is_active': {'label': _l('啟用狀態')},
     }
+    # 排除在表單中出現的資料庫欄位
     form_excluded_columns = ['password_hash', 'devices']
-    column_editable_list  = ['is_active']
-    can_create            = True
-    can_edit              = True
-    can_delete            = False
+
+    # 新增／編輯／刪除權限
+    can_create = True
+    can_edit   = True
+    can_delete = False
 
     def on_model_change(self, form, model, is_created):
-        if form.password.data:
-            model.password_hash = generate_password_hash(form.password.data)
-        elif is_created:
-            raise ValueError(_l("建立用戶需要密碼"))
+        # 這裡不需要處理密碼，僅確保其他邏輯正常
         return super().on_model_change(form, model, is_created)
+
 
 class DeviceAdmin(SecureModelView):
     column_list  = ['id', 'user.username', 'device_id', 'verified']
