@@ -5,3 +5,5 @@ gunicorn
 requests
 flask_jwt_extended
 werkzeug
+flask-wtf
+
