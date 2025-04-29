@@ -151,8 +151,8 @@ class DeviceAdmin(SecureModelView):
     can_edit   = True
     can_delete = False
 
-# 後臺帳號管理
 class AdminUserAdmin(SecureModelView):
+    # 列表上要顯示的欄位
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
     column_labels = {
@@ -160,15 +160,22 @@ class AdminUserAdmin(SecureModelView):
         'username':  _l('帳號'),
         'is_active': _l('啟用狀態'),
     }
+
+    # 編輯/新增表單要用哪些欄位
+    form_columns = ['username', 'is_active', 'password']
     form_excluded_columns = ['password_hash']
+
+    # 自訂密碼欄位
+    from wtforms import PasswordField
     form_extra_fields = {
         'password': PasswordField(_l('新密碼（留空不變更）'))
     }
     form_args = {
-        'username': {'label': _l('帳號')},
+        'username':  {'label': _l('帳號')},
         'is_active': {'label': _l('啟用狀態')},
-        'password': {'label': _l('新密碼（留空不變更）')}
+        'password':  {'label': _l('新密碼（留空不變更）')}
     }
+
     can_create = True
     can_edit   = True
     can_delete = False
