@@ -99,18 +99,17 @@ class SecureAdminIndexView(AdminIndexView):
         return redirect(url_for('admin_login'))
 
 
-# 自訂使用者的表單
 class UserForm(Form):
     username  = StringField(_l('使用者名稱'), validators=[DataRequired()])
     is_active = BooleanField(_l('啟用狀態'))
+    # 新增可編輯密碼欄位
+    password  = PasswordField(_l('新密碼（留空不變更）'))
 
-
-# 把原本的 UserAdmin 改成這樣：
 class UserAdmin(SecureModelView):
-    # 直接指定自訂的 Form
+    # 直接指定自訂表單
     form = UserForm
 
-    # 列表顯示設定
+    # 列表顯示
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
     column_labels = {
@@ -119,16 +118,18 @@ class UserAdmin(SecureModelView):
         'is_active': _l('啟用狀態'),
     }
 
-    # 只保留權限設定，其他欄位交給 UserForm 決定
     can_create = True
     can_edit   = True
     can_delete = False
 
-    # 如果有 on_model_change 自訂邏輯也可留
     def on_model_change(self, form, model, is_created):
-        # 這裡不處理密碼或 devices，就直接呼叫父類別
+        # 建立時必填密碼
+        if is_created and not form.password.data:
+            raise ValueError(_l('建立使用者需要密碼'))
+        # 只要輸入了密碼，就更新 password_hash
+        if form.password.data:
+            model.password_hash = generate_password_hash(form.password.data)
         return super().on_model_change(form, model, is_created)
-
 
 
 class DeviceAdmin(SecureModelView):
