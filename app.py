@@ -34,15 +34,17 @@ app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
 # 2. 初始化擴充套件
 db    = SQLAlchemy(app)
 jwt   = JWTManager(app)
-babel = Babel(app)
-
+# 先只建立 Babel 實例，不帶 app
+babel = Babel()
 login_manager = LoginManager(app)
 login_manager.login_view = 'admin_login'
 
-@babel.localeselector
 def get_locale():
     # 回傳最佳匹配語言
     return request.accept_languages.best_match(['zh_TW', 'en'])
+
+# 在所有路由、擴充註冊完後，註冊 locale_selector
+babel.init_app(app, locale_selector=get_locale)
 
 # 3. 定義資料模型
 class User(db.Model):
