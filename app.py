@@ -21,6 +21,7 @@ from flask_login import (
 from flask_wtf import FlaskForm
 from wtforms import StringField, BooleanField, PasswordField
 from wtforms.validators import DataRequired
+from wtforms import Form, StringField, BooleanField
 # ── 1. 建立 Flask 應用與設定 ───────────────────────────────
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get(
@@ -98,37 +99,36 @@ class SecureAdminIndexView(AdminIndexView):
         return redirect(url_for('admin_login'))
 
 
-# ── 5. 定義三個後臺面板 ────────────────────────────────────
-class UserAdmin(SecureModelView):
-    # 列表要顯示的欄位：id、username、is_active
-    column_list          = ['id', 'username', 'is_active']
-    # 允許在列表中直接切換 is_active
-    column_editable_list = ['is_active']
+# 自訂使用者的表單
+class UserForm(Form):
+    username  = StringField(_l('使用者名稱'), validators=[DataRequired()])
+    is_active = BooleanField(_l('啟用狀態'))
 
-    # 欄位標籤
+
+# 把原本的 UserAdmin 改成這樣：
+class UserAdmin(SecureModelView):
+    # 直接指定自訂的 Form
+    form = UserForm
+
+    # 列表顯示設定
+    column_list          = ['id', 'username', 'is_active']
+    column_editable_list = ['is_active']
     column_labels = {
         'id':        _l('編號'),
         'username':  _l('使用者名稱'),
         'is_active': _l('啟用狀態'),
     }
 
-    # 表單要顯示的欄位：username、is_active
-    form_columns          = ['username', 'is_active']
-    form_args = {
-        'username':  {'label': _l('使用者名稱')},
-        'is_active': {'label': _l('啟用狀態')},
-    }
-    # 排除不需要在表單中顯示的欄位
-    form_excluded_columns = ['password_hash', 'devices']
-
-    # 權限
+    # 只保留權限設定，其他欄位交給 UserForm 決定
     can_create = True
     can_edit   = True
     can_delete = False
 
+    # 如果有 on_model_change 自訂邏輯也可留
     def on_model_change(self, form, model, is_created):
-        # 這裡不再處理密碼，僅保留原有邏輯
+        # 這裡不處理密碼或 devices，就直接呼叫父類別
         return super().on_model_change(form, model, is_created)
+
 
 
 class DeviceAdmin(SecureModelView):
