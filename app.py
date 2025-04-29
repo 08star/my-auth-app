@@ -25,7 +25,7 @@ app.config['SECRET_KEY'] = os.environ.get(
     'SECRET_KEY',
     '開發用_請換成更長的隨機字串'
 )
-app.config['JWT_SECRET_KEY'] = app.config['SECRET_KEY']  # JWT 使用密鑰
+app.config['JWT_SECRET_KEY'] = app.config['SECRET_KEY']
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth_devices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['BABEL_DEFAULT_LOCALE'] = 'zh_TW'
@@ -34,16 +34,15 @@ app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
 # 2. 初始化擴充套件
 db    = SQLAlchemy(app)
 jwt   = JWTManager(app)
-# 先只建立 Babel 實例，不帶 app
 babel = Babel()
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'admin_login'
 
+# Babel 語言選擇函式
 def get_locale():
-    # 回傳最佳匹配語言
     return request.accept_languages.best_match(['zh_TW', 'en'])
-
-# 在所有路由、擴充註冊完後，註冊 locale_selector
+# 註冊 Babel
 babel.init_app(app, locale_selector=get_locale)
 
 # 3. 定義資料模型
@@ -89,18 +88,17 @@ def load_admin(uid):
 class SecureModelView(ModelView):
     def is_accessible(self):
         return current_user.is_authenticated
-
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin_login'))
 
 class SecureAdminIndexView(AdminIndexView):
     def is_accessible(self):
         return current_user.is_authenticated
-
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin_login'))
 
 # 5. 定義後臺面板
+# 使用者管理 (含密碼)
 class UserAdmin(SecureModelView):
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
@@ -109,16 +107,31 @@ class UserAdmin(SecureModelView):
         'username':  _l('使用者名稱'),
         'is_active': _l('啟用狀態'),
     }
-    form_columns          = ['username', 'is_active']
-    form_args = {
-        'username':  {'label': _l('使用者名稱')},
-        'is_active': {'label': _l('啟用狀態')},
-    }
     form_excluded_columns = ['password_hash', 'devices']
+    form_extra_fields = {
+        'password': PasswordField(_l('密碼'))
+    }
+    form_args = {
+        'username': {'label': _l('使用者名稱')},
+        'is_active': {'label': _l('啟用狀態')},
+        'password': {'label': _l('密碼')}
+    }
     can_create = True
     can_edit   = True
     can_delete = False
 
+    def on_model_change(self, form, model, is_created):
+        # 新增時需要密碼
+        if is_created:
+            if not form.password.data:
+                raise ValueError(_l('建立使用者需要密碼'))
+            model.password_hash = generate_password_hash(form.password.data)
+        # 編輯時若輸入密碼則更新Hash
+        elif form.password.data:
+            model.password_hash = generate_password_hash(form.password.data)
+        return super().on_model_change(form, model, is_created)
+
+# 裝置管理
 class DeviceAdmin(SecureModelView):
     column_list  = ['id', 'user.username', 'device_id', 'verified']
     column_labels = {
@@ -132,12 +145,13 @@ class DeviceAdmin(SecureModelView):
     form_args = {
         'user':      {'label': _l('使用者')},
         'device_id': {'label': _l('裝置 ID')},
-        'verified':  {'label': _l('已驗證')},
+        'verified':  {'label': _l('已驗證')}
     }
     can_create = False
     can_edit   = True
     can_delete = False
 
+# 後臺帳號管理
 class AdminUserAdmin(SecureModelView):
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
@@ -146,25 +160,22 @@ class AdminUserAdmin(SecureModelView):
         'username':  _l('帳號'),
         'is_active': _l('啟用狀態'),
     }
-    form_columns          = ['username', 'password', 'is_active']
     form_excluded_columns = ['password_hash']
-    form_args = {
-        'username':  {'label': _l('帳號')},
-        'is_active': {'label': _l('啟用狀態')},
-    }
     form_extra_fields = {
-        'password': PasswordField(_l('密碼'))
+        'password': PasswordField(_l('新密碼（留空不變更）'))
+    }
+    form_args = {
+        'username': {'label': _l('帳號')},
+        'is_active': {'label': _l('啟用狀態')},
+        'password': {'label': _l('新密碼（留空不變更）')}
     }
     can_create = True
     can_edit   = True
     can_delete = False
 
-    def on_form_prefill(self, form, id):
-        form.password.label.text = _l('新密碼（留空不變更）')
-
     def on_model_change(self, form, model, is_created):
         if is_created and not form.password.data:
-            raise ValueError(_l("建立管理員需要密碼"))
+            raise ValueError(_l('建立管理員需要密碼'))
         if form.password.data:
             model.password = form.password.data
         return super().on_model_change(form, model, is_created)
