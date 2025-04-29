@@ -18,34 +18,29 @@ from flask_login import (
     login_user, logout_user,
     login_required, current_user
 )
-
-# 1. 建立 Flask 應用與設定
+from flask_wtf import FlaskForm
+from wtforms import StringField, BooleanField, PasswordField
+from wtforms.validators import DataRequired
+# ── 1. 建立 Flask 應用與設定 ───────────────────────────────
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get(
     'SECRET_KEY',
     '開發用_請換成更長的隨機字串'
 )
-app.config['JWT_SECRET_KEY'] = app.config['SECRET_KEY']
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///auth_devices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['BABEL_DEFAULT_LOCALE'] = 'zh_TW'
 app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
 
-# 2. 初始化擴充套件
+# ── 2. 初始化擴充套件 ───────────────────────────────────
 db    = SQLAlchemy(app)
 jwt   = JWTManager(app)
-babel = Babel()
+babel = Babel(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'admin_login'
 
-# Babel 語言選擇函式
-def get_locale():
-    return request.accept_languages.best_match(['zh_TW', 'en'])
-# 註冊 Babel
-babel.init_app(app, locale_selector=get_locale)
-
-# 3. 定義資料模型
+# ── 3. 定義資料模型 ───────────────────────────────────────
 class User(db.Model):
     __tablename__ = 'users'
     id            = db.Column(db.Integer, primary_key=True)
@@ -69,69 +64,73 @@ class AdminUser(UserMixin, db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     is_active     = db.Column(db.Boolean, default=True)
 
+    # 這兩行讓表單能對應到 password 欄位
+    _password = None
     @property
     def password(self):
-        raise AttributeError('不可讀取密碼')
-
+        return self._password
     @password.setter
     def password(self, value):
-        self.password_hash = generate_password_hash(value)
+        self._password = value
 
     def check_password(self, pw):
         return check_password_hash(self.password_hash, pw)
+
 
 @login_manager.user_loader
 def load_admin(uid):
     return AdminUser.query.get(int(uid))
 
-# 4. 自訂保護用的 ModelView & IndexView
+
+# ── 4. 自訂保護用的 ModelView & IndexView ─────────────────────
 class SecureModelView(ModelView):
     def is_accessible(self):
         return current_user.is_authenticated
+
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin_login'))
 
 class SecureAdminIndexView(AdminIndexView):
     def is_accessible(self):
         return current_user.is_authenticated
+
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin_login'))
 
-# 5. 定義後臺面板
-# 使用者管理 (含密碼)
+
+# ── 5. 定義三個後臺面板 ────────────────────────────────────
 class UserAdmin(SecureModelView):
+    # 列表要顯示的欄位：id、username、is_active
     column_list          = ['id', 'username', 'is_active']
+    # 允許在列表中直接切換 is_active
     column_editable_list = ['is_active']
+
+    # 欄位標籤
     column_labels = {
         'id':        _l('編號'),
         'username':  _l('使用者名稱'),
         'is_active': _l('啟用狀態'),
     }
-    form_excluded_columns = ['password_hash', 'devices']
-    form_extra_fields = {
-        'password': PasswordField(_l('密碼'))
-    }
+
+    # 表單要顯示的欄位：username、is_active
+    form_columns          = ['username', 'is_active']
     form_args = {
-        'username': {'label': _l('使用者名稱')},
+        'username':  {'label': _l('使用者名稱')},
         'is_active': {'label': _l('啟用狀態')},
-        'password': {'label': _l('密碼')}
     }
+    # 排除不需要在表單中顯示的欄位
+    form_excluded_columns = ['password_hash', 'devices']
+
+    # 權限
     can_create = True
     can_edit   = True
     can_delete = False
 
     def on_model_change(self, form, model, is_created):
-        # 新增時需要密碼
-        if is_created:
-            if not form.password.data:
-                raise ValueError(_l('建立使用者需要密碼'))
-            model.password_hash = generate_password_hash(form.password.data)
-        # 編輯時若輸入密碼則更新Hash
-        elif form.password.data:
-            model.password_hash = generate_password_hash(form.password.data)
+        # 這裡不再處理密碼，僅保留原有邏輯
         return super().on_model_change(form, model, is_created)
 
-# 裝置管理
+
 class DeviceAdmin(SecureModelView):
     column_list  = ['id', 'user.username', 'device_id', 'verified']
     column_labels = {
@@ -140,19 +139,30 @@ class DeviceAdmin(SecureModelView):
         'device_id':     _l('裝置 ID'),
         'verified':      _l('已驗證'),
     }
-    column_editable_list = ['verified']
     form_columns = ['user', 'device_id', 'verified']
     form_args = {
         'user':      {'label': _l('使用者')},
         'device_id': {'label': _l('裝置 ID')},
-        'verified':  {'label': _l('已驗證')}
+        'verified':  {'label': _l('已驗證')},
     }
-    can_create = False
-    can_edit   = True
-    can_delete = False
+    column_editable_list = ['verified']
+    can_create           = False
+    can_edit             = True
+    can_delete           = False
 
+
+# 定義一張自訂的 WTForms 表單，直接拿給 ModelView 用
+class AdminUserForm(FlaskForm):
+    username  = StringField(_l('帳號'),     validators=[DataRequired()])
+    is_active = BooleanField(_l('啟用狀態'))
+    password  = PasswordField(_l('新密碼（留空不變更）'))
+
+# 把 AdminUserAdmin 改成這樣：
 class AdminUserAdmin(SecureModelView):
-    # 列表上要顯示的欄位
+    # 直接指定自訂表單，Flask-Admin 就不會再去合併任何 form_* 屬性
+    form = AdminUserForm
+
+    # 列表視圖設定維持不變
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
     column_labels = {
@@ -161,45 +171,36 @@ class AdminUserAdmin(SecureModelView):
         'is_active': _l('啟用狀態'),
     }
 
-    # 編輯/新增表單要用哪些欄位
-    form_columns = ['username', 'is_active', 'password']
-    form_excluded_columns = ['password_hash']
-
-    # 自訂密碼欄位
-    from wtforms import PasswordField
-    form_extra_fields = {
-        'password': PasswordField(_l('新密碼（留空不變更）'))
-    }
-    form_args = {
-        'username':  {'label': _l('帳號')},
-        'is_active': {'label': _l('啟用狀態')},
-        'password':  {'label': _l('新密碼（留空不變更）')}
-    }
-
     can_create = True
     can_edit   = True
     can_delete = False
 
+    # 只有 on_model_change 需要保留：處理密碼欄邏輯
     def on_model_change(self, form, model, is_created):
         if is_created and not form.password.data:
-            raise ValueError(_l('建立管理員需要密碼'))
+            raise ValueError(_l("建立管理員需要密碼"))
         if form.password.data:
-            model.password = form.password.data
+            model.password_hash = generate_password_hash(form.password.data)
         return super().on_model_change(form, model, is_created)
 
-# 6. 註冊 Admin
+
+
+# ── 6. 建立並註冊 Admin ─────────────────────────────────────
 admin = Admin(
     app,
     name=_l('管理後臺'),
     index_view=SecureAdminIndexView(),
-    template_mode='bootstrap3'
+    template_mode='bootstrap3',
+    base_template='admin/custom_master.html',
+    translations_path='translations'
 )
-admin.add_view(UserAdmin(User, db.session, name=_l('使用者'), endpoint='user_admin'))
-admin.add_view(DeviceAdmin(Device, db.session, name=_l('裝置'), endpoint='device_admin'))
+admin.add_view(UserAdmin(User,           db.session, name=_l('使用者'),   endpoint='user_admin'))
+admin.add_view(DeviceAdmin(Device,       db.session, name=_l('裝置'),     endpoint='device_admin'))
 admin.add_view(AdminUserAdmin(AdminUser, db.session, name=_l('後臺帳號'), endpoint='admin_user'))
 
-# 7. 管理員登入／登出
-@app.route('/admin/login', methods=['GET', 'POST'])
+
+# ── 7. 管理員登入／登出路由 ───────────────────────────────────
+@app.route('/admin/login', methods=['GET','POST'])
 def admin_login():
     if request.method == 'POST':
         u = request.form.get('username')
@@ -217,7 +218,8 @@ def admin_logout():
     logout_user()
     return redirect(url_for('admin_login'))
 
-# 8. API 路由
+
+# ── 8. 公開 API 路由 ─────────────────────────────────────
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify(status='ok')
@@ -225,8 +227,7 @@ def health():
 @app.route('/auth/register', methods=['POST'])
 def auth_register():
     data = request.get_json() or {}
-    u = data.get('username')
-    p = data.get('password')
+    u, p = data.get('username'), data.get('password')
     if not u or not p:
         return jsonify(error=_l('需要使用者名稱和密碼')), 400
     if User.query.filter_by(username=u).first():
@@ -239,8 +240,7 @@ def auth_register():
 @app.route('/auth/login', methods=['POST'])
 def auth_login():
     data = request.get_json() or {}
-    u = data.get('username')
-    p = data.get('password')
+    u, p = data.get('username'), data.get('password')
     if not u or not p:
         return jsonify(error=_l('需要使用者名稱和密碼')), 400
     user = User.query.filter_by(username=u).first()
@@ -258,7 +258,10 @@ def list_devices():
     user = User.query.filter_by(username=username).first()
     if not user:
         return jsonify(error=_l('未找到用戶')), 404
-    return jsonify([{"device_id": d.device_id, "verified": d.verified} for d in user.devices]), 200
+    return jsonify([
+        {"device_id": d.device_id, "verified": d.verified}
+        for d in user.devices
+    ]), 200
 
 @app.route('/devices/register', methods=['POST'])
 @jwt_required()
@@ -293,12 +296,18 @@ def device_status():
         return jsonify(error=_l('設備未綁定')), 404
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
-# 9. 啟動 & 建表 & 預設管理員
+
+# ── 9. 啟動 & 自動建立預設管理員 ───────────────────────────────
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        # 如果尚無任何管理員，則自動建立一組
         if AdminUser.query.count() == 0:
-            admin = AdminUser(username='admin', password='0905', is_active=True)
+            admin = AdminUser(
+                username='admin',
+                password_hash=generate_password_hash('0905'),
+                is_active=True
+            )
             db.session.add(admin)
             db.session.commit()
             print('已自動建立預設管理員：admin / 0905')
