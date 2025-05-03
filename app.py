@@ -106,10 +106,8 @@ class UserForm(Form):
     password  = PasswordField(_l('新密碼（留空不變更）'))
 
 class UserAdmin(SecureModelView):
-    # 直接指定自訂表單
     form = UserForm
 
-    # 列表顯示
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
     column_labels = {
@@ -123,12 +121,14 @@ class UserAdmin(SecureModelView):
     can_delete = False
 
     def on_model_change(self, form, model, is_created):
-        # 建立時必填密碼
-        if is_created and not form.password.data:
-            raise ValueError(_l('建立使用者需要密碼'))
-        # 只要輸入了密碼，就更新 password_hash
-        if form.password.data:
-            model.password_hash = generate_password_hash(form.password.data)
+        # 只有當 form 有 password 屬性（完整表單）時才處理密碼邏輯
+        if hasattr(form, 'password'):
+            # 建立時必填密碼
+            if is_created and not form.password.data:
+                raise ValueError(_l('建立使用者需要密碼'))
+            # 若填了密碼，就更新 hash
+            if form.password.data:
+                model.password_hash = generate_password_hash(form.password.data)
         return super().on_model_change(form, model, is_created)
 
 
