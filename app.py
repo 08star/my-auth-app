@@ -118,7 +118,7 @@ class UserAdmin(SecureModelView):
     }
     can_create = True
     can_edit   = True
-    can_delete = False
+    can_delete = True
 
     def on_model_change(self, form, model, is_created):
         if hasattr(form, 'password'):
