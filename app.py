@@ -137,6 +137,7 @@ class AdminUserAdmin(SecureModelView):
     can_create = True
     can_edit = True
     can_delete = False
+    action_disallowed_list = ['delete']
 
     def on_model_change(self, form, model, is_created):
         if form.password.data:
