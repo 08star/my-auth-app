@@ -109,8 +109,9 @@ class UserAdmin(SecureModelView):
     can_edit   = True
     can_delete = True
 
-    # 關閉批次（多筆）刪除，只保留每列的垃圾桶按鈕
-    action_disallowed_list = ['delete']
+    # 關閉所有批次操作（隱藏勾選框與「選中的」下拉選單）
+    def get_actions(self):
+        return {}
 
     def on_model_change(self, form, model, is_created):
         # 如果有填密碼，就更新 hash；若是新建且沒填密碼，丟錯誤
@@ -119,6 +120,7 @@ class UserAdmin(SecureModelView):
         elif is_created:
             raise ValueError(_l('建立使用者需要密碼'))
         return super().on_model_change(form, model, is_created)
+
 
 
 class DeviceAdmin(SecureModelView):
