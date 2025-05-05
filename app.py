@@ -145,7 +145,7 @@ class DeviceAdmin(SecureModelView):
     column_editable_list = ['verified']
     can_create           = False
     can_edit             = True
-    can_delete           = False
+    can_delete           = True
 
 class AdminUserForm(FlaskForm):
     username  = StringField(_l('帳號'),     validators=[DataRequired()])
