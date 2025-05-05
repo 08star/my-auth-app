@@ -163,7 +163,7 @@ class AdminUserAdmin(SecureModelView):
     }
     can_create = True
     can_edit   = True
-    can_delete = False
+    can_delete = True
 
     def on_model_change(self, form, model, is_created):
         # 先取出 password 欄位（若不存在就回傳 None）
