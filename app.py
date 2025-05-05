@@ -166,10 +166,17 @@ class AdminUserAdmin(SecureModelView):
     can_delete = False
 
     def on_model_change(self, form, model, is_created):
-        if is_created and not form.password.data:
+        # 先取出 password 欄位（若不存在就回傳 None）
+        pw_field = getattr(form, 'password', None)
+
+        # 建立新管理員時，pw_field 一定要存在且有輸入
+        if is_created and (not pw_field or not pw_field.data):
             raise ValueError(_l("建立管理員需要密碼"))
-        if form.password.data:
-            model.password_hash = generate_password_hash(form.password.data)
+
+        # 若有 pw_field 且使用者填了新密碼，就更新 hash
+        if pw_field and pw_field.data:
+            model.password_hash = generate_password_hash(pw_field.data)
+
         return super().on_model_change(form, model, is_created)
 
 # ── 5. 建立並註冊 Admin ─────────────────────────────────────
