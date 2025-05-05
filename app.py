@@ -49,6 +49,8 @@ class User(db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     is_active     = db.Column(db.Boolean, default=True)
     devices       = db.relationship('Device', back_populates='user', lazy=True)
+    def __str__(self):
+        return self.username
 
 class Device(db.Model):
     __tablename__ = 'devices'
@@ -132,24 +134,15 @@ class UserAdmin(SecureModelView):
         return super().on_model_change(form, model, is_created)
 
 
-class DeviceAdmin(SecureModelView):
-    column_list  = ['id', 'user.username', 'device_id', 'verified']
-    column_labels = {
-        'id':            _l('編號'),
-        'user.username': _l('使用者'),
-        'device_id':     _l('裝置 ID'),
-        'verified':      _l('已驗證'),
-    }
-    form_columns = ['user', 'device_id', 'verified']
-    form_args = {
-        'user':      {'label': _l('使用者')},
-        'device_id': {'label': _l('裝置 ID')},
-        'verified':  {'label': _l('已驗證')},
-    }
-    column_editable_list = ['verified']
-    can_create           = False
-    can_edit             = True
-    can_delete           = False
+class User(db.Model):
+    __tablename__ = 'users'
+    id            = db.Column(db.Integer, primary_key=True)
+    username      = db.Column(db.String(80), unique=True, nullable=False)
+    # … 其他欄位 …
+
+    def __str__(self):
+        return self.username
+
 
 
 # 定義一張自訂的 WTForms 表單，直接拿給 ModelView 用
