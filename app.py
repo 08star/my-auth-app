@@ -134,14 +134,6 @@ class UserAdmin(SecureModelView):
         return super().on_model_change(form, model, is_created)
 
 
-class User(db.Model):
-    __tablename__ = 'users'
-    id            = db.Column(db.Integer, primary_key=True)
-    username      = db.Column(db.String(80), unique=True, nullable=False)
-    # … 其他欄位 …
-
-    def __str__(self):
-        return self.username
 
 
 
