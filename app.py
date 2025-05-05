@@ -71,6 +71,7 @@ class AdminUser(UserMixin, db.Model):
 def load_admin(uid):
     return AdminUser.query.get(int(uid))
 
+
 # ── 4. 自訂保護用的 ModelView & IndexView ─────────────────────
 class SecureModelView(ModelView):
     def is_accessible(self):
@@ -79,6 +80,10 @@ class SecureModelView(ModelView):
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin_login'))
 
+    # 關閉所有批次操作（隱藏最前方勾選框和「選中的」下拉選單）
+    def get_actions(self):
+        return {}
+
 class SecureAdminIndexView(AdminIndexView):
     def is_accessible(self):
         return current_user.is_authenticated
@@ -86,16 +91,15 @@ class SecureAdminIndexView(AdminIndexView):
     def inaccessible_callback(self, name, **kwargs):
         return redirect(url_for('admin_login'))
 
+
+# ── 5. 定義後台用表單 & ModelView ────────────────────────────
 class UserForm(FlaskForm):
     username = StringField(_l('使用者名稱'), validators=[DataRequired()])
     is_active = BooleanField(_l('啟用狀態'))
     password = PasswordField(_l('新密碼（留空不變更）'))
 
 class UserAdmin(SecureModelView):
-    # 使用自訂表單
     form = UserForm
-
-    # 列表欄位
     column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
     column_labels = {
@@ -103,38 +107,29 @@ class UserAdmin(SecureModelView):
         'username':  _l('使用者名稱'),
         'is_active': _l('啟用狀態'),
     }
-
-    # 允許建立、編輯、刪除
     can_create = True
     can_edit   = True
-    can_delete = True
-
-    # 關閉所有批次操作（隱藏勾選框與「選中的」下拉選單）
-    def get_actions(self):
-        return {}
+    can_delete = True  # 保留每列的刪除圖示
 
     def on_model_change(self, form, model, is_created):
-        # 如果有填密碼，就更新 hash；若是新建且沒填密碼，丟錯誤
         if form.password.data:
             model.password_hash = generate_password_hash(form.password.data)
         elif is_created:
             raise ValueError(_l('建立使用者需要密碼'))
         return super().on_model_change(form, model, is_created)
 
-
-
 class DeviceAdmin(SecureModelView):
-    column_list = ['id', 'device_id', 'verified', 'user']
+    column_list   = ['id', 'device_id', 'verified', 'user']
     column_labels = {
-        'id': _l('編號'),
+        'id':        _l('編號'),
         'device_id': _l('裝置 ID'),
-        'verified': _l('已驗證'),
-        'user': _l('使用者'),
+        'verified':  _l('已驗證'),
+        'user':      _l('使用者'),
     }
-    form_columns = ['user', 'device_id', 'verified']
-        # 關閉所有批次操作（隱藏勾選框與「選中的」下拉選單）
-    def get_actions(self):
-        return {}
+    form_columns  = ['user', 'device_id', 'verified']
+    can_create = True
+    can_edit   = True
+    can_delete = True  # 保留刪除圖示
 
 class AdminUserForm(FlaskForm):
     username = StringField(_l('帳號'), validators=[DataRequired()])
@@ -143,16 +138,16 @@ class AdminUserForm(FlaskForm):
 
 class AdminUserAdmin(SecureModelView):
     form = AdminUserForm
-    column_list = ['id', 'username', 'is_active']
+    column_list          = ['id', 'username', 'is_active']
     column_editable_list = ['is_active']
     column_labels = {
-        'id': _l('編號'),
-        'username': _l('帳號'),
+        'id':        _l('編號'),
+        'username':  _l('帳號'),
         'is_active': _l('啟用狀態'),
     }
     can_create = True
-    can_edit = True
-    can_delete = False
+    can_edit   = True
+    can_delete = True  # 保留刪除圖示
 
     def on_model_change(self, form, model, is_created):
         if form.password.data:
@@ -160,6 +155,7 @@ class AdminUserAdmin(SecureModelView):
         elif is_created:
             raise ValueError(_l('建立管理員需要密碼'))
         return super().on_model_change(form, model, is_created)
+
 
 # ── 6. 建立並註冊 Admin ─────────────────────────────────────
 admin = Admin(
@@ -170,9 +166,10 @@ admin = Admin(
     base_template='admin/custom_master.html',
     translations_path='translations'
 )
-admin.add_view(UserAdmin(User, db.session, name=_l('使用者'), endpoint='user_admin'))
-admin.add_view(DeviceAdmin(Device, db.session, name=_l('裝置'), endpoint='device_admin'))
+admin.add_view(UserAdmin(User, db.session,       name=_l('使用者'),   endpoint='user_admin'))
+admin.add_view(DeviceAdmin(Device, db.session,   name=_l('裝置'),     endpoint='device_admin'))
 admin.add_view(AdminUserAdmin(AdminUser, db.session, name=_l('後臺帳號'), endpoint='admin_user'))
+
 
 # ── 7. 管理員登入／登出路由 ───────────────────────────────────
 @app.route('/admin/login', methods=['GET','POST'])
@@ -192,6 +189,7 @@ def admin_login():
 def admin_logout():
     logout_user()
     return redirect(url_for('admin_login'))
+
 
 # ── 8. 公開 API 路由 ─────────────────────────────────────
 @app.route('/health', methods=['GET'])
@@ -268,6 +266,7 @@ def device_status():
     if not dev:
         return jsonify(error=_l('設備未綁定')), 404
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
+
 
 # ── 9. 啟動 & 自動建立預設管理員 ───────────────────────────────
 if __name__ == '__main__':
