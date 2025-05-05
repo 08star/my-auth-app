@@ -132,6 +132,9 @@ class DeviceAdmin(SecureModelView):
         'user': _l('使用者'),
     }
     form_columns = ['user', 'device_id', 'verified']
+        # 關閉所有批次操作（隱藏勾選框與「選中的」下拉選單）
+    def get_actions(self):
+        return {}
 
 class AdminUserForm(FlaskForm):
     username = StringField(_l('帳號'), validators=[DataRequired()])
