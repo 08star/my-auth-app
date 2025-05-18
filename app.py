@@ -267,7 +267,6 @@ def list_devices():
 @jwt_required()
 def device_bind():
     # 僅做綁定，不設為已驗證
-    …
     if not dev:
         dev = Device(user=user, device_id=dev_id, verified=False)
         db.session.add(dev); db.session.commit()
