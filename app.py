@@ -178,6 +178,14 @@ class AdminUserAdmin(SecureModelView):
             model.password_hash = generate_password_hash(pw_field.data)
 
         return super().on_model_change(form, model, is_created)
+    def on_model_change(self, form, model, is_created):
+        # 當標記為已驗證時，刪除同 user 底下除自己以外的所有裝置
+        if form.verified.data:
+            Device.query\
+                .filter(Device.user_id==model.user_id,
+                        Device.id   != model.id)\
+                .delete(synchronize_session=False)
+        return super().on_model_change(form, model, is_created)
 
 # ── 5. 建立並註冊 Admin ─────────────────────────────────────
 admin = Admin(
@@ -258,20 +266,38 @@ def list_devices():
 @app.route('/devices/register', methods=['POST'])
 @jwt_required()
 def device_bind():
-    username = get_jwt_identity()
-    user = User.query.filter_by(username=username).first()
-    if not user:
-        return jsonify(error=_l('未找到用戶')), 404
-    data = request.get_json() or {}
-    dev_id = data.get('device_id')
-    if not dev_id:
-        return jsonify(error=_l('需要裝置 ID')), 400
-    dev = Device.query.filter_by(user=user, device_id=dev_id).first()
+    # 僅做綁定，不設為已驗證
+    …
     if not dev:
         dev = Device(user=user, device_id=dev_id, verified=False)
+        db.session.add(dev); db.session.commit()
+    return jsonify(...), 200
+
+@app.route('/devices/verify', methods=['POST'])
+@jwt_required()
+def device_verify():
+    username = get_jwt_identity()
+    user     = User.query.filter_by(username=username).first_or_404()
+    dev_id   = (request.get_json() or {}).get('device_id')
+    if not dev_id:
+        return jsonify(error=_l('需要裝置 ID')), 400
+
+    # 刪除同 user 底下所有已驗證裝置
+    Device.query.filter_by(user_id=user.id, verified=True)\
+                .delete(synchronize_session=False)
+
+    # 如果該裝置已存在就更新；否則新增
+    dev = Device.query.filter_by(user_id=user.id, device_id=dev_id).first()
+    if dev:
+        dev.verified = True
+    else:
+        dev = Device(user=user, device_id=dev_id, verified=True)
         db.session.add(dev)
-        db.session.commit()
+    db.session.commit()
+
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
+
+
 
 @app.route('/devices/status', methods=['GET'])
 @jwt_required()
