@@ -263,14 +263,32 @@ def list_devices():
         for d in user.devices
     ]), 200
 
+from flask import request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
 @app.route('/devices/register', methods=['POST'])
 @jwt_required()
 def device_bind():
-    # 僅做綁定，不設為已驗證
+    # 1. 取出目前使用者
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first_or_404()
+
+    # 2. 取得前端傳來的 device_id
+    data = request.get_json(silent=True) or {}
+    dev_id = data.get('device_id')
+    if not dev_id:
+        return jsonify(error=_l('需要裝置 ID')), 400
+
+    # 3. 綁定：若此裝置還沒綁定就新增，否則不重複
+    dev = Device.query.filter_by(user_id=user.id, device_id=dev_id).first()
     if not dev:
-        dev = Device(user=user, device_id=dev_id, verified=False)
-        db.session.add(dev); db.session.commit()
-    return jsonify(...), 200
+        dev = Device(user_id=user.id, device_id=dev_id, verified=False)
+        db.session.add(dev)
+        db.session.commit()
+
+    # 4. 一定回傳 JSON，並帶回目前 verified 狀態
+    return jsonify(device_id=dev.device_id, verified=dev.verified), 200
+
 
 @app.route('/devices/verify', methods=['POST'])
 @jwt_required()
