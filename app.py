@@ -266,11 +266,32 @@ def list_devices():
 @app.route('/devices/register', methods=['POST'])
 @jwt_required()
 def device_bind():
-    # 僅做綁定，不設為已驗證
+    # 1. 取得目前使用者（假設你是用 get_jwt_identity 拿 user_id）
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': '找不到使用者'}), 404
+
+    # 2. 讀取前端傳來的 device_id
+    data = request.get_json() or {}
+    dev_id = data.get('device_id')
+    if not dev_id:
+        return jsonify({'error': '缺少 device_id'}), 400
+
+    # 3. 查詢該 user、該 device_id 是否已存在
+    dev = Device.query.filter_by(user_id=user.id, device_id=dev_id).first()
+
+    # 4. 如果不存在，就新增一筆（verified=False）
     if not dev:
-        dev = Device(user=user, device_id=dev_id, verified=False)
-        db.session.add(dev); db.session.commit()
-    return jsonify(...), 200
+        dev = Device(user_id=user.id, device_id=dev_id, verified=False)
+        db.session.add(dev)
+        db.session.commit()
+
+    # 5. 回傳裝置狀態（JSON 裡帶 verified）
+    return jsonify({
+        'device_id': dev.device_id,
+        'verified':  dev.verified
+    }), 200
 
 @app.route('/devices/verify', methods=['POST'])
 @jwt_required()
