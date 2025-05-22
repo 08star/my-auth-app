@@ -265,36 +265,27 @@ def list_devices():
 
 @app.route('/devices/register', methods=['POST'])
 @jwt_required()
-def device_bind():
-    # 僅做綁定，不設為已驗證
-    if not dev:
-        dev = Device(user=user, device_id=dev_id, verified=False)
-        db.session.add(dev); db.session.commit()
-    return jsonify(...), 200
+def register_device():
+    # 1. 取得當前用戶 ID
+    user_id = get_jwt_identity()
 
-@app.route('/devices/verify', methods=['POST'])
-@jwt_required()
-def device_verify():
-    username = get_jwt_identity()
-    user     = User.query.filter_by(username=username).first_or_404()
-    dev_id   = (request.get_json() or {}).get('device_id')
-    if not dev_id:
-        return jsonify(error=_l('需要裝置 ID')), 400
+    # 2. 驗證傳入 JSON
+    data = request.get_json(silent=True)
+    if not data or 'device_id' not in data:
+        return jsonify({'錯誤': '請提供 device_id'}), 400
 
-    # 刪除同 user 底下所有已驗證裝置
-    Device.query.filter_by(user_id=user.id, verified=True)\
-                .delete(synchronize_session=False)
+    device_id = data['device_id']
 
-    # 如果該裝置已存在就更新；否則新增
-    dev = Device.query.filter_by(user_id=user.id, device_id=dev_id).first()
-    if dev:
-        dev.verified = True
-    else:
-        dev = Device(user=user, device_id=dev_id, verified=True)
-        db.session.add(dev)
+    # 3. 刪除該用戶現有的裝置（如果有）
+    Device.query.filter_by(user_id=user_id).delete()
+
+    # 4. 新增這次驗證的裝置
+    new_dev = Device(device_id=device_id, user_id=user_id)
+    db.session.add(new_dev)
     db.session.commit()
 
-    return jsonify(device_id=dev.device_id, verified=dev.verified), 200
+    # 5. 回傳已驗證狀態
+    return jsonify({'verified': True}), 201
 
 
 
