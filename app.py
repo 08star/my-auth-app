@@ -248,14 +248,14 @@ def auth_login():
         return jsonify(error=_l('無效憑證')), 401
     if not user.is_active:
         return jsonify(error=_l('用戶已停用')), 403
-    token = create_access_token(identity=user.id)
+    token = create_access_token(identity=user.username)
     return jsonify(access_token=token), 200
 
 @app.route('/devices', methods=['GET'])
 @jwt_required()
 def list_devices():
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
     if not user:
         return jsonify(error=_l('未找到用戶')), 404
     return jsonify([
@@ -263,37 +263,39 @@ def list_devices():
         for d in user.devices
     ]), 200
 
-# 1. 使用者註冊（只存，不驗證）
 @app.route('/devices/register', methods=['POST'])
 @jwt_required()
-def register_device():
-    user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
-    dev_id = data.get('device_id')
+def device_bind():
+    # 僅做綁定，不設為已驗證
+    if not dev:
+        dev = Device(user=user, device_id=dev_id, verified=False)
+        db.session.add(dev); db.session.commit()
+    return jsonify(...), 200
+
+@app.route('/devices/verify', methods=['POST'])
+@jwt_required()
+def device_verify():
+    username = get_jwt_identity()
+    user     = User.query.filter_by(username=username).first_or_404()
+    dev_id   = (request.get_json() or {}).get('device_id')
     if not dev_id:
-        return jsonify({'錯誤': '請提供 device_id'}), 400
+        return jsonify(error=_l('需要裝置 ID')), 400
 
-    # 建立一筆新的 unverified 裝置
-    new_dev = Device(user_id=user_id, device_id=dev_id, verified=False)
-    db.session.add(new_dev)
+    # 刪除同 user 底下所有已驗證裝置
+    Device.query.filter_by(user_id=user.id, verified=True)\
+                .delete(synchronize_session=False)
+
+    # 如果該裝置已存在就更新；否則新增
+    dev = Device.query.filter_by(user_id=user.id, device_id=dev_id).first()
+    if dev:
+        dev.verified = True
+    else:
+        dev = Device(user=user, device_id=dev_id, verified=True)
+        db.session.add(dev)
     db.session.commit()
 
-    return jsonify({'verified': False, 'device_record_id': new_dev.id}), 201
-# 2. 管理員驗證（把這個裝置設為唯一定的 verified）
-@app.route('/devices/<int:dev_pk>/verify', methods=['POST'])
-@jwt_required()  # 或改成專屬 @admin_required
-def verify_device(dev_pk):
-    admin_user = get_jwt_identity()
-    # 你可以檢查 admin_user 是否有權限
-    dev = Device.query.get_or_404(dev_pk)
+    return jsonify(device_id=dev.device_id, verified=dev.verified), 200
 
-    # 把同 user 底下所有裝置都設 unverified
-    Device.query.filter_by(user_id=dev.user_id).update({'verified': False})
-    # 然後把這台設為 verified
-    dev.verified = True
-    db.session.commit()
-
-    return jsonify({'verified': True, 'device_id': dev.device_id}), 200
 
 
 @app.route('/devices/status', methods=['GET'])
