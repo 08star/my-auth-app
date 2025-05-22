@@ -263,30 +263,37 @@ def list_devices():
         for d in user.devices
     ]), 200
 
+# 1. 使用者註冊（只存，不驗證）
 @app.route('/devices/register', methods=['POST'])
 @jwt_required()
 def register_device():
-    # 1. 取得當前用戶 ID
     user_id = get_jwt_identity()
-
-    # 2. 驗證傳入 JSON
-    data = request.get_json(silent=True)
-    if not data or 'device_id' not in data:
+    data = request.get_json(silent=True) or {}
+    dev_id = data.get('device_id')
+    if not dev_id:
         return jsonify({'錯誤': '請提供 device_id'}), 400
 
-    device_id = data['device_id']
-
-    # 3. 刪除該用戶現有的裝置（如果有）
-    Device.query.filter_by(user_id=user_id).delete()
-
-    # 4. 新增這次驗證的裝置
-    new_dev = Device(device_id=device_id, user_id=user_id)
+    # 建立一筆新的 unverified 裝置
+    new_dev = Device(user_id=user_id, device_id=dev_id, verified=False)
     db.session.add(new_dev)
     db.session.commit()
 
-    # 5. 回傳已驗證狀態
-    return jsonify({'verified': True}), 201
+    return jsonify({'verified': False, 'device_record_id': new_dev.id}), 201
+# 2. 管理員驗證（把這個裝置設為唯一定的 verified）
+@app.route('/devices/<int:dev_pk>/verify', methods=['POST'])
+@jwt_required()  # 或改成專屬 @admin_required
+def verify_device(dev_pk):
+    admin_user = get_jwt_identity()
+    # 你可以檢查 admin_user 是否有權限
+    dev = Device.query.get_or_404(dev_pk)
 
+    # 把同 user 底下所有裝置都設 unverified
+    Device.query.filter_by(user_id=dev.user_id).update({'verified': False})
+    # 然後把這台設為 verified
+    dev.verified = True
+    db.session.commit()
+
+    return jsonify({'verified': True, 'device_id': dev.device_id}), 200
 
 
 @app.route('/devices/status', methods=['GET'])
