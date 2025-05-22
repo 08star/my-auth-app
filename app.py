@@ -248,14 +248,14 @@ def auth_login():
         return jsonify(error=_l('無效憑證')), 401
     if not user.is_active:
         return jsonify(error=_l('用戶已停用')), 403
-    token = create_access_token(identity=user.username)
+    token = create_access_token(identity=user.id)
     return jsonify(access_token=token), 200
 
 @app.route('/devices', methods=['GET'])
 @jwt_required()
 def list_devices():
-    username = get_jwt_identity()
-    user = User.query.filter_by(username=username).first()
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
     if not user:
         return jsonify(error=_l('未找到用戶')), 404
     return jsonify([
