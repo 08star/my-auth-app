@@ -1,4 +1,7 @@
 from flask import Flask, request, jsonify
+from main import app  # 如果主程式叫 main.py，就這樣寫
+
+# Gunicorn 會從這裡找 app
 
 app = Flask(__name__)
 # …其他初始化比如 db …
