@@ -6,4 +6,9 @@ requests
 flask_jwt_extended
 werkzeug
 flask-wtf
-
+Flask-Admin
+Flask-Babel
+Flask-JWT-Extended
+Flask-Login
+Flask-WTF
+EOF
