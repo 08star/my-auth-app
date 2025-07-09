@@ -78,10 +78,8 @@ class AdminUser(UserMixin, db.Model):
         return check_password_hash(self.password_hash, pw)
 @app.route('/')
 def index():
-    # 如果你想直接轉到後台：
-    # return redirect(url_for('admin.index'))
-    # 或單純回傳歡迎文字／HTML：
-    return render_template('index.html')  
+    return redirect(url_for('admin_login'))
+
 @login_manager.user_loader
 def load_admin(uid):
     return AdminUser.query.get(int(uid))
