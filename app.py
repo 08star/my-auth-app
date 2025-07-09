@@ -76,7 +76,12 @@ class AdminUser(UserMixin, db.Model):
 
     def check_password(self, pw):
         return check_password_hash(self.password_hash, pw)
-
+@app.route('/')
+def index():
+    # 如果你想直接轉到後台：
+    # return redirect(url_for('admin.index'))
+    # 或單純回傳歡迎文字／HTML：
+    return render_template('index.html')  
 @login_manager.user_loader
 def load_admin(uid):
     return AdminUser.query.get(int(uid))
@@ -166,25 +171,16 @@ class AdminUserAdmin(SecureModelView):
     can_delete = True
 
     def on_model_change(self, form, model, is_created):
-        # 先取出 password 欄位（若不存在就回傳 None）
+        # 1. 建立或變更管理員密碼
         pw_field = getattr(form, 'password', None)
-
-        # 建立新管理員時，pw_field 一定要存在且有輸入
         if is_created and (not pw_field or not pw_field.data):
             raise ValueError(_l("建立管理員需要密碼"))
-
-        # 若有 pw_field 且使用者填了新密碼，就更新 hash
         if pw_field and pw_field.data:
             model.password_hash = generate_password_hash(pw_field.data)
 
-        return super().on_model_change(form, model, is_created)
-    def on_model_change(self, form, model, is_created):
-        # 當標記為已驗證時，刪除同 user 底下除自己以外的所有裝置
-        if form.verified.data:
-            Device.query\
-                .filter(Device.user_id==model.user_id,
-                        Device.id   != model.id)\
-                .delete(synchronize_session=False)
+        # 2. （如果你真的要在管理員變更時清除某些 Device，請寫成另一個 method）
+        #    這段通常不該放在管理員視圖裡，請確認你想要的行為
+
         return super().on_model_change(form, model, is_created)
 
 # ── 5. 建立並註冊 Admin ─────────────────────────────────────
