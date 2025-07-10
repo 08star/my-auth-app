@@ -1,48 +1,33 @@
+# app.py
 import os
-from flask import (
-    Flask, request, jsonify,
-    redirect, url_for, flash, render_template
-)
+from flask import Flask, request, jsonify, redirect, url_for, flash, render_template
 from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import (
-    JWTManager, create_access_token,
-    jwt_required, get_jwt_identity
-)
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_babel import Babel, lazy_gettext as _l
 from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from wtforms import PasswordField, StringField, BooleanField, Form
 from wtforms.validators import DataRequired
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import (
-    LoginManager, UserMixin,
-    login_user, logout_user,
-    login_required, current_user
-)
 from flask_wtf import FlaskForm
 
-# ── 1. 建立 Flask 應用與設定 ───────────────────────────────
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '@Gawailian178666')
-# 將 SQLite 库存放到可写的 /tmp 目录
 db_path = os.environ.get('DB_PATH', '/tmp/auth_devices.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['BABEL_DEFAULT_LOCALE'] = 'zh_TW'
 app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
 
-# ── 2. 初始化擴充套件 ───────────────────────────────────
-# 先建立 db 實例，不綁定 app
+# ======= 只創建一次 SQLAlchemy 實例 =======
 db = SQLAlchemy()
-jwt = JWTManager()
-babel = Babel()
-login_manager = LoginManager()
-
-# 再綁定到 app
 db.init_app(app)
-jwt.init_app(app)
-babel.init_app(app)
-login_manager.init_app(app)
+
+jwt = JWTManager(app)
+babel = Babel(app)
+
+login_manager = LoginManager(app)
 login_manager.login_view = 'admin_login'
 
 # ── 3. 定義資料模型 ───────────────────────────────────────
