@@ -336,6 +336,10 @@ def init_app():
             db.session.add(admin)
             db.session.commit()
             print('已自動建立預設管理員：admin / 0905')
-# ── 8. 啟動 & 自動建立預設管理員 ───────────────────────────────
+
+# 無論是用 python3 app.py 還是 gunicorn，都一進程就執行這段
+init_app()
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8000)))
+
