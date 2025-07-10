@@ -131,7 +131,6 @@ admin = Admin(
     name=_l('管理後臺'),
     index_view=SecureAdminIndexView(),
     template_mode='bootstrap3',
-    base_template='admin/custom_master.html',
     translations_path='translations'
 )
 admin.add_view(UserAdmin(User, db.session,      name=_l('使用者')))
