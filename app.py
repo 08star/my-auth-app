@@ -37,6 +37,8 @@ db_path = os.environ.get('DB_PATH', '/tmp/auth_devices.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+
 # ─── 資料模型 ─────────────────────────────────────────────
 class User(db.Model):
     __tablename__ = 'users'
@@ -156,6 +158,19 @@ def admin_login():
 def admin_logout():
     logout_user()
     return redirect(url_for('admin_login'))
+@app.before_first_request
+def init_db():
+    """第一次收到請求前就建好所有表格，並塞入 admin"""
+    db.create_all()
+    if not AdminUser.query.filter_by(username='admin').first():
+        adm = AdminUser(
+            username='admin',
+            password_hash=generate_password_hash('0905'),
+            is_active=True
+        )
+        db.session.add(adm)
+        db.session.commit()
+        app.logger.info("已自動建立預設管理員：admin / 0905")
 
 
 # ─── 公開 API ─────────────────────────────────────────────
@@ -261,6 +276,5 @@ def init_app():
 init_app()
 
 if __name__ == '__main__':
-    # 本地開發可改 port
-    p = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=p)
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=port)
