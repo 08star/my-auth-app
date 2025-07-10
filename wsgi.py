@@ -1,2 +1,7 @@
-# wsgi.py －－讓 Gunicorn 找到 Flask 應用實體
-from app import app   # ← 這一行就夠了，請確定 app.py 裡有 app = Flask(...)
+from app import app, init_app
+
+# 在 container 啟動、gunicorn import 這個 wsgi.py 時就先跑一次
+init_app()
+
+# gunicorn 會找的 WSGI 物件名稱
+application = app
