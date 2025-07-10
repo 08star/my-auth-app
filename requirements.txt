@@ -1,9 +1,2 @@
-Flask
-Flask-SQLAlchemy
-Flask-JWT-Extended
-Flask-Babel
-Flask-Login
-Flask-WTF
-Flask-Admin
-WTForms
+Flask>=2.0
 gunicorn
