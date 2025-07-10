@@ -324,9 +324,7 @@ def device_status():
     if not dev:
         return jsonify(error=_l('設備未綁定')), 404
     return jsonify(device_id=dev.device_id, verified=dev.verified), 200
-
-# ── 8. 啟動 & 自動建立預設管理員 ───────────────────────────────
-if __name__ == '__main__':
+def init_app():
     with app.app_context():
         db.create_all()
         if AdminUser.query.count() == 0:
@@ -338,4 +336,6 @@ if __name__ == '__main__':
             db.session.add(admin)
             db.session.commit()
             print('已自動建立預設管理員：admin / 0905')
-    app.run(host='0.0.0.0', port=8000)
+# ── 8. 啟動 & 自動建立預設管理員 ───────────────────────────────
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8000)))
