@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify, redirect, url_for, flash, render_template
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import (
     JWTManager, create_access_token,
@@ -19,6 +19,7 @@ from flask_login import (
 from flask_wtf import FlaskForm
 
 app = Flask(__name__)
+
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '@Gawailian178666')
 # 把 SQLite 存到 /tmp，Cloud Run 這裡可寫
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/auth_devices.db'
@@ -243,14 +244,10 @@ def device_status():
 
 # ─── 啟動前務必建表＆塞預設管理員 ────────────────────────
 def init_app():
-    """在啟動時建表並建立預設 admin"""
-    # 如果目錄不存在，就先確保 /tmp 在 Linux 一定可以寫
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-
     with app.app_context():
         db.create_all()
-        # 只要 admin_users 為空，就自動打入預設帳號
-        if AdminUser.query.count() == 0:
+        # 建立預設 admin
+        if not AdminUser.query.first():
             adm = AdminUser(
                 username='admin',
                 password_hash=generate_password_hash('0905'),
@@ -258,10 +255,12 @@ def init_app():
             )
             db.session.add(adm)
             db.session.commit()
-            print('已自動建立預設管理員：admin / 0905')
+            print('預設管理員已建立：admin / 0905')
+
+# 在最下面
 init_app()
 
-if __name__=='__main__':
-    # Cloud Run 會用 PORT env
-    port=int(os.environ.get('PORT',8000))
-    app.run(host='0.0.0.0',port=port)
+if __name__ == '__main__':
+    # 本地開發可改 port
+    p = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=p)
