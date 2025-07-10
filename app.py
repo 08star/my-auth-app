@@ -1,8 +1,5 @@
 import os
-from flask import (
-    Flask, request, jsonify,
-    redirect, url_for, flash, render_template
-)
+from flask import Flask, request, jsonify, redirect, url_for, flash, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import (
     JWTManager, create_access_token,
@@ -22,7 +19,7 @@ from flask_login import (
 from flask_wtf import FlaskForm
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '開發用_請換成更長的隨機字串')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '@Gawailian178666')
 # 把 SQLite 存到 /tmp，Cloud Run 這裡可寫
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/auth_devices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -35,8 +32,10 @@ babel = Babel(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'admin_login'
-
-
+db_path = os.environ.get('DB_PATH', '/tmp/auth_devices.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 # ─── 資料模型 ─────────────────────────────────────────────
 class User(db.Model):
     __tablename__ = 'users'
@@ -53,6 +52,7 @@ class Device(db.Model):
     verified  = db.Column(db.Boolean, default=False)
     user_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user      = db.relationship('User', back_populates='devices')
+    
 
 class AdminUser(UserMixin, db.Model):
     __tablename__ = 'admin_users'
@@ -243,16 +243,22 @@ def device_status():
 
 # ─── 啟動前務必建表＆塞預設管理員 ────────────────────────
 def init_app():
+    """在啟動時建表並建立預設 admin"""
+    # 如果目錄不存在，就先確保 /tmp 在 Linux 一定可以寫
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
     with app.app_context():
         db.create_all()
-        if AdminUser.query.count()==0:
-            adm=AdminUser(username='admin',
-                          password_hash=generate_password_hash('0905'),
-                          is_active=True)
+        # 只要 admin_users 為空，就自動打入預設帳號
+        if AdminUser.query.count() == 0:
+            adm = AdminUser(
+                username='admin',
+                password_hash=generate_password_hash('0905'),
+                is_active=True
+            )
             db.session.add(adm)
             db.session.commit()
             print('已自動建立預設管理員：admin / 0905')
-
 init_app()
 
 if __name__=='__main__':
