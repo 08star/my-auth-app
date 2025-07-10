@@ -17,4 +17,5 @@ EXPOSE 8080
 
 # 6. 启动命令：用 Gunicorn 运行你的 app.py
 #    假设你的 Flask 实例在 app.py 中叫做 "app"
-CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:8080", "app:app"]
+CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:8080", "wsgi:application"]
+
