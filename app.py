@@ -11,7 +11,8 @@ from flask_jwt_extended import (
 from flask_babel import Babel, lazy_gettext as _l
 from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
-from wtforms import PasswordField
+from wtforms import PasswordField, StringField, BooleanField, Form
+from wtforms.validators import DataRequired
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import (
     LoginManager, UserMixin,
@@ -19,22 +20,15 @@ from flask_login import (
     login_required, current_user
 )
 from flask_wtf import FlaskForm
-from wtforms import StringField, BooleanField, PasswordField, Form
-from wtforms.validators import DataRequired
 
-# ── 1. 建立 Flask 應用與設定 ───────────────────────────────
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get(
-    'SECRET_KEY',
-    '開發用_請換成更長的隨機字串'
-)
-# 把 SQLite 存在 /tmp 下，Cloud Run 環境可寫
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '開發用_請換成更長的隨機字串')
+# 把 SQLite 存到 /tmp，Cloud Run 這裡可寫
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/auth_devices.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['BABEL_DEFAULT_LOCALE'] = 'zh_TW'
 app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
 
-# ── 2. 初始化擴充套件 ───────────────────────────────────
 db    = SQLAlchemy(app)
 jwt   = JWTManager(app)
 babel = Babel(app)
@@ -42,7 +36,8 @@ babel = Babel(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'admin_login'
 
-# ── 3. 定義資料模型 ───────────────────────────────────────
+
+# ─── 資料模型 ─────────────────────────────────────────────
 class User(db.Model):
     __tablename__ = 'users'
     id            = db.Column(db.Integer, primary_key=True)
@@ -65,26 +60,27 @@ class AdminUser(UserMixin, db.Model):
     username      = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     is_active     = db.Column(db.Boolean, default=True)
-
     def check_password(self, pw):
         return check_password_hash(self.password_hash, pw)
 
-# ── 4. 自訂保護用的 ModelView & IndexView ─────────────────────
+
+# ─── Admin 介面安全設定 ─────────────────────────────────
 class SecureModelView(ModelView):
     def is_accessible(self):
         return current_user.is_authenticated
-    def inaccessible_callback(self, name, **kwargs):
+    def inaccessible_callback(self, name, **kw):
         return redirect(url_for('admin_login'))
     def get_actions(self):
-        return {}  # 去掉批次動作
+        return {}
 
 class SecureAdminIndexView(AdminIndexView):
     def is_accessible(self):
         return current_user.is_authenticated
-    def inaccessible_callback(self, name, **kwargs):
+    def inaccessible_callback(self, name, **kw):
         return redirect(url_for('admin_login'))
 
-# 使用者管理表單
+
+# ─── Flask-Admin View ────────────────────────────────────
 class UserForm(Form):
     username  = StringField(_l('使用者名稱'), validators=[DataRequired()])
     is_active = BooleanField(_l('啟用狀態'))
@@ -92,23 +88,23 @@ class UserForm(Form):
 
 class UserAdmin(SecureModelView):
     form = UserForm
-    column_list          = ['id', 'username', 'is_active']
+    column_list          = ['id','username','is_active']
     column_editable_list = ['is_active']
     can_create = can_edit = can_delete = True
-    def on_model_change(self, form, model, is_created):
+    def on_model_change(self, form, model, created):
         pw = getattr(form, 'password', None)
-        if is_created and (not pw or not pw.data):
+        if created and (not pw or not pw.data):
             raise ValueError(_l('建立使用者需要密碼'))
         if pw and pw.data:
             model.password_hash = generate_password_hash(pw.data)
-        return super().on_model_change(form, model, is_created)
+        return super().on_model_change(form, model, created)
 
 class DeviceAdmin(SecureModelView):
-    column_list  = ['id', 'user.username', 'device_id', 'verified']
-    form_columns = ['user', 'device_id', 'verified']
+    column_list  = ['id','user.username','device_id','verified']
+    form_columns = ['user','device_id','verified']
     column_editable_list = ['verified']
     can_create = False
-    can_edit   = can_delete = True
+    can_edit = can_delete = True
 
 class AdminUserForm(FlaskForm):
     username  = StringField(_l('帳號'), validators=[DataRequired()])
@@ -117,18 +113,19 @@ class AdminUserForm(FlaskForm):
 
 class AdminUserAdmin(SecureModelView):
     form = AdminUserForm
-    column_list          = ['id', 'username', 'is_active']
+    column_list          = ['id','username','is_active']
     column_editable_list = ['is_active']
     can_create = can_edit = can_delete = True
-    def on_model_change(self, form, model, is_created):
+    def on_model_change(self, form, model, created):
         pw = getattr(form, 'password', None)
-        if is_created and (not pw or not pw.data):
+        if created and (not pw or not pw.data):
             raise ValueError(_l('建立管理員需要密碼'))
         if pw and pw.data:
             model.password_hash = generate_password_hash(pw.data)
-        return super().on_model_change(form, model, is_created)
+        return super().on_model_change(form, model, created)
 
-# ── 5. 建立並註冊 Admin ─────────────────────────────────────
+
+# ─── 登記 Admin ───────────────────────────────────────────
 admin = Admin(
     app,
     name=_l('管理後臺'),
@@ -137,21 +134,21 @@ admin = Admin(
     base_template='admin/custom_master.html',
     translations_path='translations'
 )
-admin.add_view(UserAdmin(User, db.session, name=_l('使用者')))
-admin.add_view(DeviceAdmin(Device, db.session, name=_l('裝置')))
+admin.add_view(UserAdmin(User, db.session,      name=_l('使用者')))
+admin.add_view(DeviceAdmin(Device, db.session,  name=_l('裝置')))
 admin.add_view(AdminUserAdmin(AdminUser, db.session, name=_l('後臺帳號')))
 
-# ── 6. 管理員登入／登出路由 ───────────────────────────────────
+
+# ─── Admin 登入/登出 ─────────────────────────────────────
 @app.route('/admin/login', methods=['GET','POST'])
 def admin_login():
     if request.method=='POST':
-        u = request.form.get('username')
-        p = request.form.get('password')
-        adm = AdminUser.query.filter_by(username=u).first()
+        u=request.form['username']; p=request.form['password']
+        adm=AdminUser.query.filter_by(username=u).first()
         if adm and adm.is_active and adm.check_password(p):
             login_user(adm)
             return redirect(url_for('admin.index'))
-        flash(_l('帳號或密碼錯誤'), 'danger')
+        flash(_l('帳號或密碼錯誤'),'danger')
     return render_template('admin_login.html')
 
 @app.route('/admin/logout')
@@ -160,7 +157,8 @@ def admin_logout():
     logout_user()
     return redirect(url_for('admin_login'))
 
-# ── 7. 公開 API 路由 ─────────────────────────────────────
+
+# ─── 公開 API ─────────────────────────────────────────────
 @app.route('/health')
 def health():
     return jsonify(status='ok')
@@ -173,29 +171,28 @@ def auth_register():
         return jsonify(error=_l('需要使用者名稱和密碼')),400
     if User.query.filter_by(username=u).first():
         return jsonify(error=_l('使用者名稱已存在')),409
-    usr = User(username=u, password_hash=generate_password_hash(p))
+    usr=User(username=u,password_hash=generate_password_hash(p))
     db.session.add(usr); db.session.commit()
     return jsonify(msg=_l('使用者創建')),201
 
 @app.route('/auth/login', methods=['POST'])
 def auth_login():
-    data = request.get_json() or {}
-    u,p = data.get('username'), data.get('password')
+    data=request.get_json() or {}
+    u,p=data.get('username'),data.get('password')
     if not u or not p:
         return jsonify(error=_l('需要使用者名稱和密碼')),400
-    usr = User.query.filter_by(username=u).first()
+    usr=User.query.filter_by(username=u).first()
     if not usr or not check_password_hash(usr.password_hash,p):
         return jsonify(error=_l('無效憑證')),401
     if not usr.is_active:
         return jsonify(error=_l('用戶已停用')),403
-    tok = create_access_token(identity=usr.username)
+    tok=create_access_token(identity=usr.username)
     return jsonify(access_token=tok),200
 
 @app.route('/devices', methods=['GET'])
 @jwt_required()
 def list_devices():
-    name = get_jwt_identity()
-    usr  = User.query.filter_by(username=name).first()
+    usr=User.query.filter_by(username=get_jwt_identity()).first()
     if not usr:
         return jsonify(error=_l('未找到用戶')),404
     return jsonify([{'device_id':d.device_id,'verified':d.verified} for d in usr.devices]),200
@@ -203,62 +200,63 @@ def list_devices():
 @app.route('/devices/register', methods=['POST'])
 @jwt_required()
 def device_bind():
-    usr = User.query.filter_by(username=get_jwt_identity()).first_or_404()
-    dev_id = (request.get_json() or {}).get('device_id')
+    usr=User.query.filter_by(username=get_jwt_identity()).first_or_404()
+    dev_id=(request.get_json() or {}).get('device_id')
     if not dev_id:
         return jsonify(error=_l('需要裝置 ID')),400
-    d = Device.query.filter_by(user_id=usr.id, device_id=dev_id).first()
+    d=Device.query.filter_by(user_id=usr.id,device_id=dev_id).first()
     if not d:
-        d = Device(user_id=usr.id, device_id=dev_id, verified=False)
+        d=Device(user_id=usr.id,device_id=dev_id,verified=False)
         db.session.add(d); db.session.commit()
-    return jsonify(device_id=d.device_id, verified=d.verified),200
+    return jsonify(device_id=d.device_id,verified=d.verified),200
 
 @app.route('/devices/verify', methods=['POST'])
 @jwt_required()
 def device_verify():
-    usr = User.query.filter_by(username=get_jwt_identity()).first_or_404()
-    dev_id = (request.get_json() or {}).get('device_id')
+    usr=User.query.filter_by(username=get_jwt_identity()).first_or_404()
+    dev_id=(request.get_json() or {}).get('device_id')
     if not dev_id:
         return jsonify(error=_l('需要裝置 ID')),400
-    Device.query.filter_by(user_id=usr.id, verified=True).delete(synchronize_session=False)
-    d = Device.query.filter_by(user_id=usr.id, device_id=dev_id).first()
+    Device.query.filter_by(user_id=usr.id,verified=True).delete(synchronize_session=False)
+    d=Device.query.filter_by(user_id=usr.id,device_id=dev_id).first()
     if d:
-        d.verified = True
+        d.verified=True
     else:
-        d = Device(user=usr, device_id=dev_id, verified=True)
+        d=Device(user=usr,device_id=dev_id,verified=True)
         db.session.add(d)
     db.session.commit()
-    return jsonify(device_id=d.device_id, verified=d.verified),200
+    return jsonify(device_id=d.device_id,verified=d.verified),200
 
 @app.route('/devices/status')
 @jwt_required()
 def device_status():
-    usr = User.query.filter_by(username=get_jwt_identity()).first()
+    usr=User.query.filter_by(username=get_jwt_identity()).first()
     if not usr:
         return jsonify(error=_l('未找到用戶')),404
-    dev_id = request.args.get('device_id')
+    dev_id=request.args.get('device_id')
     if not dev_id:
         return jsonify(error=_l('需要裝置 ID')),400
-    d = Device.query.filter_by(user=usr, device_id=dev_id).first()
+    d=Device.query.filter_by(user=usr,device_id=dev_id).first()
     if not d:
         return jsonify(error=_l('設備未綁定')),404
-    return jsonify(device_id=d.device_id, verified=d.verified),200
+    return jsonify(device_id=d.device_id,verified=d.verified),200
 
+
+# ─── 啟動前務必建表＆塞預設管理員 ────────────────────────
 def init_app():
     with app.app_context():
         db.create_all()
         if AdminUser.query.count()==0:
-            adm = AdminUser(
-                username='admin',
-                password_hash=generate_password_hash('0905'),
-                is_active=True
-            )
+            adm=AdminUser(username='admin',
+                          password_hash=generate_password_hash('0905'),
+                          is_active=True)
             db.session.add(adm)
             db.session.commit()
             print('已自動建立預設管理員：admin / 0905')
 
-# 啟動前一定先 init
 init_app()
 
 if __name__=='__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT',8000)))
+    # Cloud Run 會用 PORT env
+    port=int(os.environ.get('PORT',8000))
+    app.run(host='0.0.0.0',port=port)
