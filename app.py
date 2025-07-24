@@ -94,6 +94,5 @@ def init_db():
         db.session.commit()
 
 # ─── 其余 API … ────────────────────
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT',8000)))
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT',5000)))
