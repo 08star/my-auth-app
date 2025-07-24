@@ -93,6 +93,15 @@ def init_db():
         db.session.add(adm)
         db.session.commit()
 
-# ─── 其余 API … ────────────────────
+# ─── 其余 前台API … ────────────────────
+@app.route('/', methods=['GET'])
+def index():
+    """
+    網站首頁——之後可放通用導覽、介紹或跳轉登入連結
+    """
+    return render_template('index.html')
+
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT',5000)))
