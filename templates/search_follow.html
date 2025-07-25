@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IG 自動追蹤</title>
+  <script src="https://cdn.jsdelivr.net/npm/socket.io@4/dist/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>IG 自動追蹤</h1>
+  <form id="follow-form">
+    <input name="username" placeholder="IG 帳號" required><br>
+    <input name="password" type="password" placeholder="密碼" required><br>
+    <input name="target" placeholder="目標帳號" required><br>
+    <button type="submit">開始追蹤</button>
+    <button type="button" id="stop-btn">停止</button>
+  </form>
+  <pre id="log-area" style="height:300px;overflow:auto;border:1px solid #ccc"></pre>
+  <div id="challenge" style="display:none">
+    <p>⚠️ 偵測到安全驗證，請到 VNC 完成後按下「繼續」</p>
+    <button id="resume-btn">繼續</button>
+  </div>
+
+  <script>
+    const socket = io();
+    const logArea = document.getElementById('log-area');
+    const form = document.getElementById('follow-form');
+    const stopBtn = document.getElementById('stop-btn');
+    const challengeDiv = document.getElementById('challenge');
+    const resumeBtn = document.getElementById('resume-btn');
+
+    socket.on('log', msg => {
+      logArea.textContent += msg + "\n";
+      logArea.scrollTop = logArea.scrollHeight;
+    });
+
+    socket.on('challenge', () => {
+      challengeDiv.style.display = 'block';
+    });
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      fetch('/api/start_follow', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          username: form.username.value,
+          password: form.password.value,
+          target: form.target.value,
+        })
+      });
+    });
+
+    stopBtn.addEventListener('click', () => {
+      fetch('/api/stop_follow', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username:form.username.value})
+      });
+    });
+
+    resumeBtn.addEventListener('click', () => {
+      socket.emit('resume');
+      challengeDiv.style.display = 'none';
+    });
+  </script>
+</body>
+</html>
