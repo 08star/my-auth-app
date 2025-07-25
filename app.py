@@ -99,7 +99,7 @@ def index():
     """
     網站首頁——之後可放通用導覽、介紹或跳轉登入連結
     """
-    return render_template('search_follow.html')
+    return render_template('index.html')
 
 
 
